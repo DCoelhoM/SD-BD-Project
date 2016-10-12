@@ -1,2 +1,2 @@
-public class TCPServer {
+public interface TCPServer extends java.rmi.Remote {
 }
