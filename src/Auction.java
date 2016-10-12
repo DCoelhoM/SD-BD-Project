@@ -1,10 +1,9 @@
-import java.util.Collections;
-import java.util.Date;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
 
 public class Auction {
     private int state; // 0-> Canceled; 1 -> Active; 2 -> Ended
+    private String uniqueID;
+    private String owner;
     private int code;
     private String name;
     private String description;
@@ -13,8 +12,10 @@ public class Auction {
     private Map<String,Integer> bids;
     private Map<String,String> messages;
 
-    public Auction(int code, String name, String description, Date deadline, int amount) {
+    public Auction(String owner, int code, String name, String description, Date deadline, int amount) {
         this.state = 1;
+        this.uniqueID = UUID.randomUUID().toString();
+        this.owner = owner;
         this.code = code;
         this.name = name;
         this.description = description;
@@ -36,10 +37,24 @@ public class Auction {
 
     }
 
+    public String getUniqueID(){
+        return uniqueID;
+    }
+
+    public String getOwner(){
+        return owner;
+    }
+
+    public int getCode(){
+        return code;
+    }
+
     @Override
     public String toString() {
         return "Auction{" +
                 "state=" + state +
+                ", uniqueID='" + uniqueID + '\'' +
+                ", owner='" + owner + '\'' +
                 ", code=" + code +
                 ", name='" + name + '\'' +
                 ", description='" + description + '\'' +
@@ -51,7 +66,7 @@ public class Auction {
     }
 
     public static void main(String args[]){
-        Auction teste = new Auction(123456,"LALALA","LEILAO TESTE",new Date(),10);
+        Auction teste = new Auction("DINIS", 123456,"LALALA","LEILAO TESTE",new Date(),10);
         teste.bid("lalala",5);
         System.out.println(teste);
     }

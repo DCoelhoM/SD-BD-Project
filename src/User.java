@@ -7,4 +7,12 @@ public class User {
         this.password = pw;
     }
 
+    public String getName(){
+        return name;
+    }
+
+    public String getPassword(){
+        return password;
+    }
+
 }
