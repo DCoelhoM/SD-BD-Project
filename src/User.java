@@ -1,10 +1,16 @@
 public class User {
+    private String email;
     private String name;
     private String password;
 
-    public User(String n, String pw){
+    public User(String mail, String n, String pw){
+        this.email = mail;
         this.name = n;
         this.password = pw;
+    }
+
+    public String getEmail(){
+        return email;
     }
 
     public String getName(){

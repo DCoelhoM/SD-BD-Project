@@ -3,8 +3,8 @@ import java.util.*;
 public class Auction {
     private int state; // 0-> Canceled; 1 -> Active; 2 -> Ended
     private String uniqueID;
-    private String owner;
-    private int code;
+    private String owner; //Owner email
+    private int code; //Product EAN/ISBN code
     private String name;
     private String description;
     private Date deadline;
@@ -12,10 +12,10 @@ public class Auction {
     private Map<String,Integer> bids;
     private Map<String,String> messages;
 
-    public Auction(String owner, int code, String name, String description, Date deadline, int amount) {
+    public Auction(String mail, int code, String name, String description, Date deadline, int amount) {
         this.state = 1;
         this.uniqueID = UUID.randomUUID().toString();
-        this.owner = owner;
+        this.owner = mail;
         this.code = code;
         this.name = name;
         this.description = description;

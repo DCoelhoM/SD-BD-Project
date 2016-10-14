@@ -2,29 +2,31 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
+import java.util.List;
 
 public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implements RMIServer{
-    private ArrayList<Auction> auctions;
-    private ArrayList<User> users;
+    private List<Auction> auctions;
+    private List<User> users;
 
     public RMIServerImpl() throws java.rmi.RemoteException{
         super();
-        auctions = new ArrayList<>();
-        users = new ArrayList<>();
+        auctions = Collections.synchronizedList(new ArrayList<>());
+        users = Collections.synchronizedList(new ArrayList<>());
     }
-    private boolean checkNameAvailability(String name){
+    private boolean checkEmailAvailability(String mail){
         for (User u:users){
-            if (u.getName().equals(name)){
+            if (u.getEmail().equals(mail)){
                 return true;
             }
         }
         return false;
     }
     @Override
-    public boolean register(String name, String password) throws RemoteException {
-        if (!checkNameAvailability(name)){
-            User new_user = new User(name,password);
+    public boolean register(String mail, String name, String password) throws RemoteException {
+        if (!checkEmailAvailability(mail)){
+            User new_user = new User(mail,name,password);
             users.add(new_user);
             return true;
         } else {
@@ -32,17 +34,17 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         }
     }
 
-    private boolean checkCredentials(String name, String password){
+    private boolean checkCredentials(String mail, String password){
         for (User u:users){
-            if (u.getName().equals(name)){
+            if (u.getEmail().equals(mail)){
                 if (u.getPassword().equals(password)){
                     return true;
                 } else {
-                    return false; //WRONG PW
+                    return false; //Wrong pw
                 }
             }
         }
-        return false; //USER NOT FOUND
+        return false; //Mail not found
     }
 
     @Override
