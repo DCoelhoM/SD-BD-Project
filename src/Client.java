@@ -4,41 +4,53 @@ import java.util.*;
 
 public class Client {
     public static void main(String[] args) {
-        Socket socket;
-        PrintWriter outToServer;
-        BufferedReader inFromServer = null;
+        Socket s = null;
         try {
-            // connect to the specified address:port (default is localhost:12345)
-            if(args.length == 2)
-                socket = new Socket(args[0], Integer.parseInt(args[1]));
-            else
-                socket = new Socket("localhost", 12345);
+            // 1o passo
+            s = new Socket("localhost", 6000);
 
-            // create streams for writing to and reading from the socket
-            inFromServer = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            outToServer = new PrintWriter(socket.getOutputStream(), true);
+            System.out.println("SOCKET=" + s);
+            // 2o passo
+            DataInputStream in = new DataInputStream(s.getInputStream());
+            DataOutputStream out = new DataOutputStream(s.getOutputStream());
 
-            // create a thread for reading from the keyboard and writing to the server
-            new Thread() {
-                public void run() {
-                    Scanner keyboardScanner = new Scanner(System.in);
-                    while(!socket.isClosed()) {
-                        String readKeyboard = keyboardScanner.nextLine();
-                        outToServer.println(readKeyboard);
-                    }
+            String texto = "";
+            InputStreamReader input = new InputStreamReader(System.in);
+            BufferedReader reader = new BufferedReader(input);
+            System.out.println("Introduza texto:");
+
+            // 3o passo
+            while (true) {
+                // READ STRING FROM KEYBOARD
+                try {
+                    texto = reader.readLine();
+                } catch (Exception e) {
                 }
-            }.start();
 
-            // the main thread loops reading from the server and writing to System.out
-            String messageFromServer;
-            while((messageFromServer = inFromServer.readLine()) != null)
-                System.out.println(messageFromServer);
+                // WRITE INTO THE SOCKET
+                out.writeUTF(texto);
+
+                // READ FROM SOCKET
+                String data = in.readUTF();
+
+                // DISPLAY WHAT WAS READ
+                System.out.println("Received: " + data);
+            }
+
+        } catch (UnknownHostException e) {
+            System.out.println("Sock:" + e.getMessage());
+        } catch (EOFException e) {
+            System.out.println("EOF:" + e.getMessage());
         } catch (IOException e) {
-            if(inFromServer == null)
-                System.out.println("\nUsage: java TCPClient <host> <port>\n");
-            System.out.println(e.getMessage());
+            System.out.println("IO:" + e.getMessage());
         } finally {
-            try { inFromServer.close(); } catch (Exception e) {}
+            if (s != null)
+                try {
+                    s.close();
+                } catch (IOException e) {
+                    System.out.println("close:" + e.getMessage());
+                }
         }
     }
+
 }

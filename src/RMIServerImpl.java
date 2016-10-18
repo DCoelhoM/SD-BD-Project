@@ -28,6 +28,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         if (checkEmailAvailability(mail)){
             User new_user = new User(mail,name,password);
             users.add(new_user);
+            System.out.println(new_user);
             return true;
         } else {
             return false;
@@ -137,7 +138,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
             RMIServerImpl rmiServer = new RMIServerImpl();
             //TODO load users and auctions from files???
             Registry r = LocateRegistry.createRegistry(7000);
-            r.rebind("sd", rmiServer);
+            r.rebind("iBei", rmiServer);
             System.out.println("RMI Server ready.");
         } catch (RemoteException re) {
             System.out.println("Exception in RMIServerImpl.main: " + re);
