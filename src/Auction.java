@@ -1,8 +1,10 @@
+import java.io.IOException;
 import java.util.*;
 
 public class Auction {
     private int state; // 0-> Canceled; 1 -> Active; 2 -> Ended
-    private String uniqueID;
+    private int id;
+    //private String uniqueID;
     private String owner; //Owner email
     private int code; //Product EAN/ISBN code
     private String name;
@@ -14,7 +16,26 @@ public class Auction {
 
     public Auction(String mail, int code, String name, String description, Date deadline, int amount) {
         this.state = 1;
-        this.uniqueID = UUID.randomUUID().toString();
+        //this.uniqueID = UUID.randomUUID().toString();
+        //ID
+        String filename = "id.txt";
+        TextFile previous_id = new TextFile();
+        int prev_id=0;
+        try {
+            previous_id.openRead(filename);
+            prev_id=Integer.valueOf(previous_id.readLine());
+            previous_id.closeRead();
+        } catch (IOException e) {
+            try {
+                //file doesnt exist -> create new file
+                previous_id.openWriteOW(filename);
+                previous_id.writeLine("0");
+                previous_id.closeWrite();
+            } catch (IOException e1) {
+                System.out.println("Problem with read/create id file.");
+            }
+        }
+        this.id = prev_id+1;
         this.owner = mail;
         this.code = code;
         this.name = name;
@@ -23,6 +44,14 @@ public class Auction {
         this.amount = amount;
         this.bids = Collections.synchronizedMap(new LinkedHashMap<String, Integer>());
         this.messages = Collections.synchronizedMap(new LinkedHashMap<String, String>());
+
+        try {
+            previous_id.openWriteOW(filename);
+            previous_id.writeLine(String.valueOf(this.id));
+            previous_id.closeWrite();
+        } catch (java.io.IOException e) {
+            System.out.println("Problem with save id file.");
+        }
     }
 
     public void bid(String name, int value){
@@ -37,8 +66,8 @@ public class Auction {
 
     }
 
-    public String getUniqueID(){
-        return uniqueID;
+    public int getID(){
+        return id;
     }
 
     public String getOwner(){
@@ -53,7 +82,7 @@ public class Auction {
     public String toString() {
         return "Auction{" +
                 "state=" + state +
-                ", uniqueID='" + uniqueID + '\'' +
+                ", id='" + id + '\'' +
                 ", owner='" + owner + '\'' +
                 ", code=" + code +
                 ", name='" + name + '\'' +
@@ -68,7 +97,10 @@ public class Auction {
     public static void main(String args[]){
         Auction teste = new Auction("DINIS", 123456,"LALALA","LEILAO TESTE",new Date(),10);
         teste.bid("lalala",5);
+        Auction teste1 = new Auction("DINIS", 123456,"LALALA","LEILAO TESTE2",new Date(),10);
+        teste.bid("lala2",10);
         System.out.println(teste);
+        System.out.println(teste1);
     }
 }
 

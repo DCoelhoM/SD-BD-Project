@@ -18,14 +18,14 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     private boolean checkEmailAvailability(String mail){
         for (User u:users){
             if (u.getEmail().equals(mail)){
-                return true;
+                return false;
             }
         }
-        return false;
+        return true;
     }
     @Override
     public boolean register(String mail, String name, String password) throws RemoteException {
-        if (!checkEmailAvailability(mail)){
+        if (checkEmailAvailability(mail)){
             User new_user = new User(mail,name,password);
             users.add(new_user);
             return true;
@@ -77,9 +77,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     }
 
     @Override
-    public Auction detail_auction(String id) throws RemoteException {
+    public Auction detail_auction(int id) throws RemoteException {
         for (Auction a:auctions){
-            if (a.getUniqueID().equals(id)){
+            if (a.getID()==id){
                 return a;
             }
         }
@@ -98,7 +98,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     }
 
     @Override
-    public boolean bid() throws RemoteException {
+    public boolean bid(int id, int amount) throws RemoteException {
         return false;
     }
 
