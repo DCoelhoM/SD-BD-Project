@@ -17,6 +17,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     }
     private boolean checkUsernameAvailability(String username){
         for (User u:users){
+            System.out.println(u);
             if (u.getUsername().equals(username)){
                 return false;
             }
@@ -28,7 +29,6 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         if (checkUsernameAvailability(username)){
             User new_user = new User(username, password);
             users.add(new_user);
-            System.out.println(new_user);
             return true;
         } else {
             return false;
@@ -38,7 +38,6 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     private boolean checkCredentials(String username, String password){
         for (User u : users){
             if (u.getUsername().equals(username)){
-                System.out.println(password);
                 //Wrong pw
                 return u.getPassword().equals(password);
             }
@@ -48,7 +47,6 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
 
     @Override
     public boolean login(String username, String password) throws RemoteException {
-        System.out.println(password);
         return checkCredentials(username, password);
     }
 

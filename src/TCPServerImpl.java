@@ -13,7 +13,6 @@ public class TCPServerImpl extends java.rmi.server.UnicastRemoteObject implement
     public static void main(String args[]){
         try {
             RMIServer RMI = (RMIServer) LocateRegistry.getRegistry(7000).lookup("iBei");
-            RMI.register("pierre", "omidyar");
             int number=0;
             try {
                 int serverPort = 6000;
@@ -83,7 +82,6 @@ class Connection extends Thread {
         }
         System.out.println(parsedInput);
 
-        //type : login , username : pierre , password : omidyar
         chosenType(parsedInput);
     }
 
@@ -95,16 +93,15 @@ class Connection extends Thread {
                 login(parsedInput);
                 break;
             case "status":
-                System.out.println("123");
                 break;
             case "item_list":
                 System.out.println("123");
                 break;
             case "register":
-                System.out.println("123");
+                register(parsedInput);
                 break;
             case "create_auction":
-                System.out.println("123");
+                create_auction(parsedInput);
                 break;
             case "search_auction":
                 System.out.println("123");
@@ -130,19 +127,48 @@ class Connection extends Thread {
         }
     }
 
+    //type : login , username : pierre , password : omidyar
+    //TODO: CHECK IF USER IS ALREADY LOGGED
     private void login(LinkedHashMap<String, String> parsedInput){
         String username, password;
         username = parsedInput.get("username");
         password = parsedInput.get("password");
         try {
             if(RMI.login(username, password)){
-                System.out.println("gg ez");
+                out.writeUTF("type : login , ok : true");
             } else {
-                System.out.println("allahu akbar");
+                out.writeUTF("type : login , ok : false");
             }
         } catch (RemoteException e) {
             e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
+
+    // type : register , username : pierre , password : omidyar
+    private void register(LinkedHashMap<String, String> parsedInput){
+        String username, password;
+        username = parsedInput.get("username");
+        password = parsedInput.get("password");
+
+        try {
+            if(RMI.register(username, password)){
+                out.writeUTF("type : register , ok : true");
+            } else {
+                out.writeUTF("type : register , ok : false");
+            }
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void create_auction(LinkedHashMap<String, String> parsedInput){
+        
+    }
+
+
 }
 
