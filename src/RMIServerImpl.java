@@ -125,8 +125,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     public String stats() throws RemoteException {
         return null;
     }
-
-    public static void main(String args[]){
+    public static void rmiStart(){
         try {
             RMIServerImpl rmiServer = new RMIServerImpl();
             //TODO load users and auctions from files???
@@ -134,7 +133,18 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
             r.rebind("iBei", rmiServer);
             System.out.println("RMI Server ready.");
         } catch (RemoteException re) {
-            System.out.println("Exception in RMIServerImpl.main: " + re);
+            System.out.println("RMI already up, ill wake up in 10 sec...");
+            try {
+                Thread.sleep(10000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            rmiStart();
         }
+    }
+
+    public static void main(String args[]){
+        rmiStart();
+
     }
 }
