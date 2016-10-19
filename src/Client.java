@@ -2,55 +2,43 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 
-public class Client {
+class TCPClient {
     public static void main(String[] args) {
-        Socket s = null;
+        Socket socket;
+        PrintWriter outToServer;
+        BufferedReader inFromServer = null;
         try {
-            // 1o passo
-            s = new Socket("localhost", 6000);
+            // connect to the specified address:port (default is localhost:12345)
+            if(args.length == 2)
+                socket = new Socket(args[0], Integer.parseInt(args[1]));
+            else
+                socket = new Socket("localhost", 6000);//TODO Antes da defesa mudar para 12345!!!!!!!!!!!!!!!!!<<<<<<<<<<<<----------------------------------------------------------
 
-            System.out.println("SOCKET=" + s);
-            // 2o passo
-            DataInputStream in = new DataInputStream(s.getInputStream());
-            DataOutputStream out = new DataOutputStream(s.getOutputStream());
+            // create streams for writing to and reading from the socket
+            inFromServer = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            outToServer = new PrintWriter(socket.getOutputStream(), true);
 
-            String texto = "";
-            InputStreamReader input = new InputStreamReader(System.in);
-            BufferedReader reader = new BufferedReader(input);
-            System.out.println("Introduza texto:");
-
-            // 3o passo
-            while (true) {
-                // READ STRING FROM KEYBOARD
-                try {
-                    texto = reader.readLine();
-                } catch (Exception e) {
+            // create a thread for reading from the keyboard and writing to the server
+            new Thread() {
+                public void run() {
+                    Scanner keyboardScanner = new Scanner(System.in);
+                    while(!socket.isClosed()) {
+                        String readKeyboard = keyboardScanner.nextLine();
+                        outToServer.println(readKeyboard);
+                    }
                 }
+            }.start();
 
-                // WRITE INTO THE SOCKET
-                out.writeUTF(texto);
-
-                // READ FROM SOCKET
-                String data = in.readUTF();
-
-                // DISPLAY WHAT WAS READ
-                System.out.println("Received: " + data);
-            }
-
-        } catch (UnknownHostException e) {
-            System.out.println("Sock:" + e.getMessage());
-        } catch (EOFException e) {
-            System.out.println("EOF:" + e.getMessage());
+            // the main thread loops reading from the server and writing to System.out
+            String messageFromServer;
+            while((messageFromServer = inFromServer.readLine()) != null)
+                System.out.println(messageFromServer);
         } catch (IOException e) {
-            System.out.println("IO:" + e.getMessage());
+            if(inFromServer == null)
+                System.out.println("\nUsage: java TCPClient <host> <port>\n");
+            System.out.println(e.getMessage());
         } finally {
-            if (s != null)
-                try {
-                    s.close();
-                } catch (IOException e) {
-                    System.out.println("close:" + e.getMessage());
-                }
+            try { inFromServer.close(); } catch (Exception e) {}
         }
     }
-
 }
