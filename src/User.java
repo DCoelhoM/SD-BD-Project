@@ -1,20 +1,14 @@
 public class User {
-    private String email;
-    private String name;
+    private String username;
     private String password;
 
-    public User(String mail, String n, String pw){
-        this.email = mail;
-        this.name = n;
-        this.password = pw;
+    public User(String username, String password){
+        this.username = username;
+        this.password = password;
     }
 
-    public String getEmail(){
-        return email;
-    }
-
-    public String getName(){
-        return name;
+    public String getUsername(){
+        return username;
     }
 
     public String getPassword(){
@@ -23,9 +17,8 @@ public class User {
 
     @Override
     public String toString() {
-        return "User{" +
-                "email='" + email + '\'' +
-                ", name='" + name + '\'' +
+        return "User: {" +
+                "name='" + username + '\'' +
                 ", password='" + password + '\'' +
                 '}';
     }

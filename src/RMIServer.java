@@ -4,8 +4,8 @@ import java.util.Date;
 public interface RMIServer extends java.rmi.Remote {
 
     //USER
-    public boolean register(String mail, String name, String password) throws java.rmi.RemoteException;
-    public boolean login(String mail, String password) throws java.rmi.RemoteException;
+    public boolean register(String username, String password) throws java.rmi.RemoteException;
+    public boolean login(String username, String password) throws java.rmi.RemoteException;
     //AUCTIONS
     public boolean create_auction(String owner, int code, String title, String description, Date deadline, int amount) throws java.rmi.RemoteException;
     public ArrayList<Auction> search_auction(int code) throws java.rmi.RemoteException;
