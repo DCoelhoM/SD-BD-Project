@@ -39,11 +39,8 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         for (User u : users){
             if (u.getUsername().equals(username)){
                 System.out.println(password);
-                if (u.getPassword().equals(password)){
-                    return true;
-                } else {
-                    return false; //Wrong pw
-                }
+                //Wrong pw
+                return u.getPassword().equals(password);
             }
         }
         return false; //username not found
@@ -52,11 +49,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     @Override
     public boolean login(String username, String password) throws RemoteException {
         System.out.println(password);
-        if (checkCredentials(username, password)){
-            return true;
-        } else {
-            return false;
-        }
+        return checkCredentials(username, password);
     }
 
     @Override
