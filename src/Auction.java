@@ -6,7 +6,7 @@ public class Auction {
     private int id;
     //private String uniqueID;
     private String owner; //Owner email
-    private int code; //Product EAN/ISBN code
+    private long code; //Product EAN/ISBN code
     private String name;
     private String description;
     private Date deadline;
@@ -14,7 +14,7 @@ public class Auction {
     private Map<String,Integer> bids;
     private Map<String,String> messages;
 
-    public Auction(String mail, int code, String name, String description, Date deadline, int amount) {
+    public Auction(String mail, long code, String name, String description, Date deadline, int amount) {
         this.state = 1;
         //this.uniqueID = UUID.randomUUID().toString();
         //ID
@@ -74,7 +74,7 @@ public class Auction {
         return owner;
     }
 
-    public int getCode(){
+    public long getCode(){
         return code;
     }
 

@@ -2,7 +2,13 @@ import java.net.*;
 import java.io.*;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.time.format.DateTimeFormatter;
+import java.util.Date;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 
 public class TCPServerImpl extends java.rmi.server.UnicastRemoteObject implements TCPServer{
 
@@ -40,6 +46,7 @@ class Connection extends Thread {
     private Socket clientSocket;
     private int thread_number;
     private RMIServer RMI;
+    private String username;
 
     public Connection (RMIServer RMI, Socket newClientSocket, int number) {
         this.RMI = RMI;
@@ -75,7 +82,7 @@ class Connection extends Thread {
         aux = data.split(",");
 
         for (String field : aux) {
-            String[] split = field.split(":");
+            String[] split = field.split(" : ");
             String firstSubString = split[0].trim();
             String secondSubString = split[1].trim();
             parsedInput.put(firstSubString, secondSubString);
@@ -135,6 +142,7 @@ class Connection extends Thread {
         password = parsedInput.get("password");
         try {
             if(RMI.login(username, password)){
+                this.username = username;
                 out.writeUTF("type : login , ok : true");
             } else {
                 out.writeUTF("type : login , ok : false");
@@ -165,8 +173,39 @@ class Connection extends Thread {
         }
     }
 
+    //type : create_auction , code : 9780451524935, title : 1984 , description : big brother is watching you , deadline : 2017-01-01 00:01 , amount : 10
+    //String owner, int code, String title, String description, Date deadline, int amount
     private void create_auction(LinkedHashMap<String, String> parsedInput){
-        
+        long code;
+        int amount;
+        String title, description, date;
+        Date deadline = null;
+
+        SimpleDateFormat formattedDate = new SimpleDateFormat ("yyyy-MM-dd HH:mm");
+
+        code = Long.parseLong(parsedInput.get("code"));
+        amount = Integer.parseInt(parsedInput.get("amount"));
+        title = parsedInput.get("title");
+        description = parsedInput.get("description");
+        date = parsedInput.get("deadline");
+
+        try {
+            deadline = formattedDate.parse(date);
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+
+        try {
+            if(RMI.create_auction(this.username, code, title, description, deadline, amount)){
+                out.writeUTF("type : create_auction , ok : true");
+            } else {
+                out.writeUTF("type : create_auction , ok : false");
+            }
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
 

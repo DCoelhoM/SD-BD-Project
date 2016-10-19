@@ -51,7 +51,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     }
 
     @Override
-    public boolean create_auction(String owner, int code, String title, String description, Date deadline, int amount) throws RemoteException {
+    public boolean create_auction(String owner, long code, String title, String description, Date deadline, int amount) throws RemoteException {
         //TODO DEADLINE > ACTUAL DATE
         //TODO EMPTY ARGS
         Auction new_auc = new Auction(owner, code, title, description, deadline, amount);
@@ -60,7 +60,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     }
 
     @Override
-    public ArrayList<Auction> search_auction(int code) throws RemoteException {
+    public ArrayList<Auction> search_auction(long code) throws RemoteException {
         ArrayList<Auction> auctions_found = new ArrayList<>();
         for (Auction a:auctions){
             if (a.getCode()==code){
@@ -112,7 +112,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     }
 
     @Override
-    public boolean cancel_auction(int code) throws RemoteException {
+    public boolean cancel_auction(long code) throws RemoteException {
         return false;
     }
 
