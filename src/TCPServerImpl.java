@@ -85,6 +85,7 @@ class Connection extends Thread {
 
         aux = data.split(",");
 
+        // TODO: ter a certeza que sub string 1 e 2 vem separadas por espaço : espaço, senão parte. verificar no script de python
         for (String field : aux) {
             String[] split = field.split(" : ");
             String firstSubString = split[0].trim();
@@ -144,7 +145,7 @@ class Connection extends Thread {
     }
 
     //type : login , username : pierre , password : omidyar
-    //TODO: CHECK IF USER IS ALREADY LOGGED
+    //TODO: CHECK IF USER IS ALREADY LOGGED SO NO ONE CAN LOG WITHOUT HIM LOGGING FIRST
     private void login(LinkedHashMap<String, String> parsedInput){
         String username, password;
         username = parsedInput.get("username");
@@ -173,8 +174,6 @@ class Connection extends Thread {
             } else {
                 out.println("type : register , ok : false");
             }
-        } catch (RemoteException e) {
-            e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -210,18 +209,17 @@ class Connection extends Thread {
             }
         } catch (RemoteException e) {
             e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
         }
     }
 
-    // type : search_auction , code:9780451524935
+    // type : search_auction , code : 9780451524935
     private void search_auction(LinkedHashMap<String, String> parsedInput){
         long code;
         code = Long.parseLong(parsedInput.get("code"));
 
         try {
-            System.out.println(TCPServerImpl.RMI.search_auction(code));
+            String data = TCPServerImpl.RMI.search_auction(code);
+            out.println(data);
         } catch (RemoteException e) {
             e.printStackTrace();
         }
