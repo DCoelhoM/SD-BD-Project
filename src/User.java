@@ -1,4 +1,6 @@
-public class User {
+import java.io.Serializable;
+
+public class User implements Serializable{
     private String type; // "admin", "user"
     private String state; // "active", "banned"
     private String username;
