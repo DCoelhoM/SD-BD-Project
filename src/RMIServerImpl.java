@@ -111,7 +111,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     @Override
     public boolean edit_auction(String username, int id, HashMap<String,String> data) throws RemoteException {
         for (Auction a:auctions){
-            if (a.getID()==id){
+            if (a.getID()==id && a.getOwner().equals(username)){
                 if (!a.checkBids()){
                     if (data.containsKey("code")){
                         a.setCode(Long.parseLong(data.get("code")));
@@ -156,6 +156,14 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     @Override
     public ArrayList<String> online_users() throws RemoteException {
         return null;
+    }
+
+    public void end_auctions(){
+        for (Auction a:auctions){
+            if (a.getDeadline().after(new Date())){
+                a.endAuction();
+            }
+        }
     }
 
     @Override
@@ -292,6 +300,18 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
             r.rebind("iBei", rmiServer);
             rmiServer.loadAuctions();
             rmiServer.loadUsers();
+            new Thread() {
+                public void run() {
+                    while(true) {
+                        rmiServer.end_auctions();
+                        try {
+                            Thread.sleep(60000);
+                        } catch (InterruptedException e) {
+                            System.out.println("Problem with end auctions thread!");
+                        }
+                    }
+                }
+            }.start();
             System.out.println("RMI Server ready.");
         } catch (RemoteException e) {
             System.out.println("Cant create registry!");

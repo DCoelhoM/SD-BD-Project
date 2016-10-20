@@ -144,6 +144,14 @@ public class Auction implements Serializable {
         return title;
     }
 
+    public Date getDeadline() {
+        return deadline;
+    }
+
+    public String getState() {
+        return state;
+    }
+
     public void setCode(long code) {
         this.code = code;
     }
