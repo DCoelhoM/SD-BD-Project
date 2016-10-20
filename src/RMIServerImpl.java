@@ -1,3 +1,4 @@
+import java.io.IOException;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -29,6 +30,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         if (checkUsernameAvailability(username)){
             User new_user = new User(username, password);
             users.add(new_user);
+            saveUsers();
             return true;
         } else {
             return false;
@@ -56,6 +58,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         //TODO EMPTY ARGS
         Auction new_auc = new Auction(owner, code, title, description, deadline, amount);
         auctions.add(new_auc);
+        saveAuctions();
         return true;
     }
 
@@ -95,7 +98,10 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     public boolean bid(int id, String username, int amount) throws RemoteException {
         for (Auction a:auctions){
             if (a.getID()==id){
-                return a.addBid(username,amount);
+                if(a.addBid(username,amount)) {
+                    saveAuctions();
+                    return true;
+                }
             }
         }
         return false;
@@ -126,6 +132,8 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
                     if (data.containsKey("amount")){
                        a.setAmount(Integer.parseInt(data.get("amount")));
                     }
+                    saveAuctions();
+                    return true;
                 }
             }
         }
@@ -137,6 +145,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         for (Auction a:auctions){
             if (a.getID()==auction_id){
                 a.addMsg(username,msg);
+                saveAuctions();
                 return true;
             }
         }
@@ -153,6 +162,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         for (Auction a:auctions){
             if (a.getID()==id){
                 a.cancelAuction();
+                saveAuctions();
                 return true;
             }
         }
@@ -172,6 +182,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
                         a.addMsg("NOTIFICATION","SORRY FOR THE PROBLEM");
                     }
                 }
+                return true;
             }
         }
         return false;
@@ -186,6 +197,88 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     public String ping() throws RemoteException {
         return "Pong";
     }
+
+    public void saveAuctions(){
+        ObjectFile file = new ObjectFile();
+        try {
+            file.openWrite("auctions");
+        } catch (IOException e) {
+            System.out.println("Problem opening auctions file(WRITE MODE).");
+        }
+        try {
+            file.writeObject(this.auctions);
+        } catch (IOException e) {
+            System.out.println("Problem saving auctions");
+        }
+        try {
+            file.closeWrite();
+        } catch (IOException e) {
+            System.out.println("Problem close auctions file(WRITE MODE).");
+        }
+    }
+
+    public void saveUsers(){
+        ObjectFile file = new ObjectFile();
+        try {
+            file.openWrite("users");
+        } catch (IOException e) {
+            System.out.println("Problem opening users file(WRITE MODE)");
+        }
+        try {
+            file.writeObject(this.users);
+        } catch (IOException e) {
+            System.out.println("Problem saving users");
+        }
+        try {
+            file.closeWrite();
+        } catch (IOException e) {
+            System.out.println("Problem closing users file(WRITE MODE).");
+        }
+    }
+
+    public void loadAuctions(){
+        ObjectFile file = new ObjectFile();
+        try {
+            file.openRead("auctions");
+        } catch (IOException e) {
+            System.out.println("Problem opening auctions file(READ MODE)(No auctions found)");
+        }
+
+        try {
+            this.auctions= (ArrayList<Auction>) file.readObject();
+        } catch (IOException | ClassNotFoundException e) {
+            System.out.println("Problem loading auctions");
+        }
+
+        try {
+            file.closeRead();
+        } catch (IOException e) {
+            System.out.println("Problem closing auctions file(READ MODE)");
+        }
+    }
+
+    public void loadUsers(){
+        ObjectFile file = new ObjectFile();
+        try {
+            file.openRead("users");
+        } catch (IOException e) {
+            System.out.println("Problem opening users file(READ MODE)(No users found)");
+        }
+
+        try {
+            this.auctions= (ArrayList<Auction>) file.readObject();
+        } catch (IOException | ClassNotFoundException e) {
+            System.out.println("Problem loading users");
+        }
+
+        try {
+            file.closeRead();
+        } catch (IOException e) {
+            System.out.println("Problem closing users file(READ MODE)");
+        }
+
+    }
+
     static void rmiStart(){
         Registry r;
         RMIServerImpl rmiServer;
@@ -193,6 +286,8 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
             rmiServer = new RMIServerImpl();
             r = LocateRegistry.createRegistry(7000);
             r.rebind("iBei", rmiServer);
+            rmiServer.loadAuctions();
+            rmiServer.loadUsers();
             System.out.println("RMI Server ready.");
         } catch (RemoteException e) {
             System.out.println("Cant create registry!");

@@ -93,25 +93,26 @@ public class Auction implements Serializable {
 
     public void removeUserBids(String username){
         int n_bids = bids.size();
-
-        int amount=0;
-        int index_first_occur=0;
-        for (int i = 0 ; i < n_bids; i++){
-            if(bids.get(i).getKey().equals(username)){
-                amount=bids.get(i).getValue();
-                index_first_occur=i;
-                break;
+        if(n_bids>0) {
+            int amount = 0;
+            int index_first_occur = 0;
+            for (int i = 0; i < n_bids; i++) {
+                if (bids.get(i).getKey().equals(username)) {
+                    amount = bids.get(i).getValue();
+                    index_first_occur = i;
+                    break;
+                }
             }
-        }
 
-        if(!bids.get(n_bids-1).getKey().equals(username)){
-            bids.get(n_bids-1).setValue(amount);
-        } else {
-            bids.remove(n_bids-1);
-        }
+            if (!bids.get(n_bids - 1).getKey().equals(username)) {
+                bids.get(n_bids - 1).setValue(amount);
+            } else {
+                bids.remove(n_bids - 1);
+            }
 
-        for(int i = n_bids - 2; i >= index_first_occur; i--){
-            bids.remove(i);
+            for (int i = n_bids - 2; i >= index_first_occur; i--) {
+                bids.remove(i);
+            }
         }
     }
 
@@ -196,15 +197,55 @@ public class Auction implements Serializable {
     }
 
     public static void main(String args[]){
-        Auction teste = new Auction("DINIS", 123456,"LALALA","LEILAO TESTE",new Date(),10);
-        System.out.println(teste);
+        ArrayList<Auction> auctions = new ArrayList<>();
+        Auction teste = new Auction("DINIS", 123456,"LALALA","LEILAO TESTE",new Date(),1000);
         teste.addBid("jorge",100);
         teste.addBid("jorge",90);
         teste.addBid("pinho",80);
         teste.addBid("jorge",70);
-        System.out.println(teste);
         teste.removeUserBids("jorge");
-        System.out.println(teste);
+        Auction teste1 = new Auction("DINIS", 1234567,"LALALA1","LEILAO TESTE",new Date(),10);
+        Auction teste2 = new Auction("DINIS", 12345678,"LALALA2","LEILAO TESTE",new Date(),10);
+        auctions.add(teste);
+        auctions.add(teste1);
+        auctions.add(teste2);
+        System.out.println(auctions);
+        ObjectFile file = new ObjectFile();
+        try {
+            file.openWrite("auctions");
+        } catch (IOException e) {
+            System.out.println("PROBLEMS");
+        }
+        try {
+            file.writeObject(auctions);
+        } catch (IOException e) {
+            System.out.println("PROBLEMS2");
+        }
+        try {
+            file.closeWrite();
+        } catch (IOException e) {
+            System.out.println("PROBLEMS3");
+        }
+
+        ArrayList<Auction> new_auctions = new ArrayList<>();
+        try {
+            file.openRead("auctions");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        try {
+            new_auctions= (ArrayList<Auction>) file.readObject();
+        } catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+
+        try {
+            file.closeRead();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        System.out.println(new_auctions);
 
     }
 }
