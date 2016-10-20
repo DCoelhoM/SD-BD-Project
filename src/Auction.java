@@ -2,7 +2,7 @@ import java.io.IOException;
 import java.util.*;
 
 public class Auction {
-    private int state; // 0-> Canceled; 1 -> Active; 2 -> Ended
+    private String state; // "active", "canceled", "ended"
     private int id;
     //private String uniqueID;
     private String owner; //Owner email
@@ -15,7 +15,7 @@ public class Auction {
     private Map<String,String> messages;
 
     public Auction(String mail, long code, String title, String description, Date deadline, int amount) {
-        this.state = 1;
+        this.state = "active";
         //this.uniqueID = UUID.randomUUID().toString();
         //ID
         String filename = "id.txt";
@@ -84,18 +84,30 @@ public class Auction {
 
     @Override
     public String toString() {
-        return "Auction{" +
-                "state=" + state +
-                ", id='" + id + '\'' +
-                ", owner='" + owner + '\'' +
-                ", code=" + code +
-                ", title='" + title + '\'' +
-                ", description='" + description + '\'' +
-                ", deadline=" + deadline +
-                ", amount=" + amount +
-                ", bids=" + bids +
-                ", messages=" + messages +
-                '}';
+        int msg_count = messages.size();
+        int bids_count = bids.size();
+
+        String aux_details = "title: " + title + ", description: " + description + ", deadline: " + deadline.toString() + ", messages_count: " + String.valueOf(msg_count);
+
+        int i=0;
+        for (Map.Entry<String,String> m : messages.entrySet()){
+            String user = ", messages_" + String.valueOf(i) + "_user: " + m.getKey();
+            String msg = ", messages_" + String.valueOf(i) + "_text: " + m.getValue();
+            aux_details += user + msg;
+            i++;
+        }
+
+        aux_details+= ", bids_count: " + String.valueOf(bids_count);
+
+        int j=0;
+        for (Map.Entry<String,Integer> b : bids.entrySet()){
+            String user = ", messages_" + String.valueOf(j) + "_user: " + b.getKey();
+            String amount = ", messages_" + String.valueOf(j) + "_amount: " + String.valueOf(b.getValue());
+            aux_details += user + amount;
+            j++;
+        }
+
+        return aux_details;
     }
 
     public static void main(String args[]){

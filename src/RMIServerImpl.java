@@ -60,7 +60,16 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     }
 
     @Override
-    public String search_auction(long code) throws RemoteException {
+    public ArrayList<Auction> search_auction(long code) throws RemoteException {
+        ArrayList<Auction> auctions_found = new ArrayList<>();
+        for (Auction a:auctions){
+            if (a.getCode()==code){
+                auctions_found.add(a);
+            }
+        }
+        return auctions_found;
+
+        /*
         String auctions_found = "";
         int count=0;
         for (Auction a:auctions){
@@ -72,8 +81,8 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
                 count++;
             }
         }
-
         return "type: search_auction , items_count: "+String.valueOf(count)+auctions_found;
+        */
     }
 
     @Override
