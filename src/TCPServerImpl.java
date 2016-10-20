@@ -110,11 +110,6 @@ class Connection extends Thread {
             case "login":
                 login(parsedInput);
                 break;
-            case "status":
-                break;
-            case "item_list":
-                System.out.println("123");
-                break;
             case "register":
                 register(parsedInput);
                 break;
@@ -126,8 +121,9 @@ class Connection extends Thread {
                 break;
             case "detail_auction":
                 detail_auction(parsedInput);
+                break;
             case "my_auctions":
-                System.out.println("123");
+                my_auctions(parsedInput);
                 break;
             case "bid":
                 System.out.println("123");
@@ -144,7 +140,7 @@ class Connection extends Thread {
         }
     }
 
-    //type : login , username : pierre , password : omidyar
+    // type : login , username : pierre , password : omidyar
     //TODO: CHECK IF USER IS ALREADY LOGGED SO NO ONE CAN LOG WITHOUT HIM LOGGING FIRST
     private void login(LinkedHashMap<String, String> parsedInput) {
         String username, password;
@@ -153,6 +149,7 @@ class Connection extends Thread {
         try {
             if (TCPServerImpl.RMI.login(username, password)) {
                 out.println("type : login , ok : true");
+                this.username = username;
             } else {
                 out.println("type : login , ok : false");
             }
@@ -192,7 +189,7 @@ class Connection extends Thread {
         }
     }
 
-    //type : create_auction , code : 9780451524935, title : 1984 , description : big brother is watching you , deadline : 2017-01-01 00:01 , amount : 10
+    // type : create_auction , code : 9780451524935, title : 1984 , description : big brother is watching you , deadline : 2017-01-01 00:01 , amount : 10
     //String owner, int code, String title, String description, Date deadline, int amount
     private void create_auction(LinkedHashMap<String, String> parsedInput){
         long code;
@@ -264,16 +261,14 @@ class Connection extends Thread {
     }
 
     // type : detail_auction , id : 101
-    /*
-    type : detail_auction , title : 1984, description : big brother i swa tching you , de a dli ne : 2017!01!01 00 :01 , messages_coun t :2, messages_0_user : pierre , messages_0_text : qual a editora?, messages_1_user : pierre , messages_1_text : entretanto vi que era a antigona , bids_count : 0
-     */
-    // TODO: mudar o toString disto.
+
     private void detail_auction(LinkedHashMap<String, String> parsedInput){
         int id = Integer.parseInt(parsedInput.get("id"));
 
         Auction auction;
         try {
             auction = TCPServerImpl.RMI.detail_auction(id);
+            System.out.println("123");
             out.println(auction);
         } catch (RemoteException e) {
             try {
@@ -285,6 +280,20 @@ class Connection extends Thread {
             TCPServerImpl.rmiConnection();
             detail_auction(parsedInput);
         }
+    }
+
+    // type : my_auctions
+    private void my_auctions(LinkedHashMap<String, String> parsedInput){
+        ArrayList<Auction> user_auctions = new ArrayList<>();
+
+        try {
+            user_auctions = TCPServerImpl.RMI.my_auctions(this.username);
+            out.println(user_auctions);
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
+
+
     }
 
 }

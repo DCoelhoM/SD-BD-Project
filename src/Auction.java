@@ -6,7 +6,7 @@ public class Auction implements Serializable {
     private String state; // "active", "canceled", "ended"
     private int id;
     //private String uniqueID;
-    private String owner; //Owner email
+    private String owner; //Owner username
     private long code; //Product EAN/ISBN code
     private String title; //title
     private String description;

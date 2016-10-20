@@ -18,7 +18,6 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     }
     private boolean checkUsernameAvailability(String username){
         for (User u:users){
-            System.out.println(u);
             if (u.getUsername().equals(username)){
                 return false;
             }
@@ -65,11 +64,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         ArrayList<Auction> auctions_found = new ArrayList<>();
         for (Auction a:auctions){
             if (a.getCode()==code){
-                System.out.println(a);
                 auctions_found.add(a);
             }
         }
-        System.out.println(auctions_found);
         return auctions_found;
     }
 
@@ -86,7 +83,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     @Override
     public ArrayList<Auction> my_auctions(String username) throws RemoteException {
         ArrayList<Auction> user_aucs = new ArrayList<>();
-        for (Auction a:auctions){
+        for (Auction a : auctions){
             if (a.getOwner().equals(username) || a.checkUserBidActivity(username) || a.checkUserMessageActivity(username)){
                 user_aucs.add(a);
             }
