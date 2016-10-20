@@ -181,7 +181,14 @@ class Connection extends Thread {
                 out.println("type : register , ok : false");
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            try {
+                System.out.println("Connection with problems...");
+                Thread.sleep(5000);
+            } catch (InterruptedException e1) {
+                e1.printStackTrace();
+            }
+            TCPServerImpl.rmiConnection();
+            register(parsedInput);
         }
     }
 
@@ -214,7 +221,14 @@ class Connection extends Thread {
                 out.println("type : create_auction , ok : false");
             }
         } catch (RemoteException e) {
-            e.printStackTrace();
+            try {
+                System.out.println("Connection with problems...");
+                Thread.sleep(5000);
+            } catch (InterruptedException e1) {
+                e1.printStackTrace();
+            }
+            TCPServerImpl.rmiConnection();
+            create_auction(parsedInput);
         }
     }
 
@@ -238,7 +252,14 @@ class Connection extends Thread {
             }
             out.println("type: search_auction , items_count: "+String.valueOf(count)+auctions_found);
         } catch (RemoteException e) {
-            e.printStackTrace();
+            try {
+                System.out.println("Connection with problems...");
+                Thread.sleep(5000);
+            } catch (InterruptedException e1) {
+                e1.printStackTrace();
+            }
+            TCPServerImpl.rmiConnection();
+            search_auction(parsedInput);
         }
     }
 
@@ -255,7 +276,14 @@ class Connection extends Thread {
             auction = TCPServerImpl.RMI.detail_auction(id);
             out.println(auction);
         } catch (RemoteException e) {
-            e.printStackTrace();
+            try {
+                System.out.println("Connection with problems...");
+                Thread.sleep(5000);
+            } catch (InterruptedException e1) {
+                e1.printStackTrace();
+            }
+            TCPServerImpl.rmiConnection();
+            detail_auction(parsedInput);
         }
     }
 
