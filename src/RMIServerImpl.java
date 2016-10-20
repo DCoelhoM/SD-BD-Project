@@ -1,3 +1,4 @@
+import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -64,9 +65,11 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         ArrayList<Auction> auctions_found = new ArrayList<>();
         for (Auction a:auctions){
             if (a.getCode()==code){
+                System.out.println(a);
                 auctions_found.add(a);
             }
         }
+        System.out.println(auctions_found);
         return auctions_found;
 
         /*
@@ -140,26 +143,49 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     public String stats() throws RemoteException {
         return null;
     }
-    public static void rmiStart(){
+
+    @Override
+    public String ping() throws RemoteException {
+        return "Pong";
+    }
+    static void rmiStart(){
+        Registry r;
+        RMIServerImpl rmiServer;
         try {
-            RMIServerImpl rmiServer = new RMIServerImpl();
-            //TODO load users and auctions from files???
-            Registry r = LocateRegistry.createRegistry(7000);
+            rmiServer = new RMIServerImpl();
+            r = LocateRegistry.createRegistry(7000);
             r.rebind("iBei", rmiServer);
             System.out.println("RMI Server ready.");
-        } catch (RemoteException re) {
-            System.out.println("RMI already up, ill wake up in 10 sec...");
+        } catch (RemoteException e) {
+            System.out.println("Cant create registry!");
+        }
+
+    }
+    static void testRMI(RMIServer RMI){
+        try {
+            String answer = RMI.ping();
             try {
+                System.out.println(answer);
                 Thread.sleep(10000);
+                testRMI(RMI);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
+
+        } catch (RemoteException e) {
             rmiStart();
         }
+
     }
 
     public static void main(String args[]){
-        rmiStart();
+        try {
+            RMIServer RMI = (RMIServer) LocateRegistry.getRegistry(7000).lookup("iBei");
+            testRMI(RMI);
+        } catch (RemoteException | NotBoundException e) {
+            rmiStart();
+        }
+
 
     }
 }

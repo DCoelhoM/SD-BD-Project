@@ -1,7 +1,8 @@
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.*;
 
-public class Auction {
+public class Auction implements Serializable {
     private String state; // "active", "canceled", "ended"
     private int id;
     //private String uniqueID;

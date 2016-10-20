@@ -5,6 +5,7 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.LinkedHashMap;
 
@@ -40,7 +41,7 @@ public class TCPServerImpl extends java.rmi.server.UnicastRemoteObject implement
         try {
             TCPServerImpl.RMI = (RMIServer) LocateRegistry.getRegistry(7000).lookup("iBei");
         } catch (RemoteException | NotBoundException e1) {
-            e1.printStackTrace();
+            rmiConnection();
         }
     }
 }
@@ -217,8 +218,19 @@ class Connection extends Thread {
         code = Long.parseLong(parsedInput.get("code"));
 
         try {
-            String data = TCPServerImpl.RMI.search_auction(code);
-            out.println(data);
+            ArrayList<Auction> a_list = TCPServerImpl.RMI.search_auction(code);
+            String auctions_found = "";
+            int count=0;
+            for (Auction a:a_list){
+                if (a.getCode()==code){
+                    String id_aux = ", items_" + String.valueOf(count) + "_id: " + String.valueOf(a.getID());
+                    String code_aux = ", items_" + String.valueOf(count) + "_code: " + String.valueOf(a.getCode());
+                    String title_aux = ", items_" + String.valueOf(count) + "_title: " + String.valueOf(a.getTitle());
+                    auctions_found += id_aux + code_aux + title_aux;
+                    count++;
+                }
+            }
+            out.println("type: search_auction , items_count: "+String.valueOf(count)+auctions_found);
         } catch (RemoteException e) {
             e.printStackTrace();
         }
