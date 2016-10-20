@@ -7,14 +7,14 @@ public class Auction {
     //private String uniqueID;
     private String owner; //Owner email
     private long code; //Product EAN/ISBN code
-    private String name;
+    private String title; //title
     private String description;
     private Date deadline;
     private int amount;
     private Map<String,Integer> bids;
     private Map<String,String> messages;
 
-    public Auction(String mail, long code, String name, String description, Date deadline, int amount) {
+    public Auction(String mail, long code, String title, String description, Date deadline, int amount) {
         this.state = 1;
         //this.uniqueID = UUID.randomUUID().toString();
         //ID
@@ -38,7 +38,7 @@ public class Auction {
         this.id = prev_id+1;
         this.owner = mail;
         this.code = code;
-        this.name = name;
+        this.title = title;
         this.description = description;
         this.deadline = deadline;
         this.amount = amount;
@@ -78,6 +78,10 @@ public class Auction {
         return code;
     }
 
+    public String getTitle() {
+        return title;
+    }
+
     @Override
     public String toString() {
         return "Auction{" +
@@ -85,7 +89,7 @@ public class Auction {
                 ", id='" + id + '\'' +
                 ", owner='" + owner + '\'' +
                 ", code=" + code +
-                ", name='" + name + '\'' +
+                ", title='" + title + '\'' +
                 ", description='" + description + '\'' +
                 ", deadline=" + deadline +
                 ", amount=" + amount +
