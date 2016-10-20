@@ -71,21 +71,6 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         }
         System.out.println(auctions_found);
         return auctions_found;
-
-        /*
-        String auctions_found = "";
-        int count=0;
-        for (Auction a:auctions){
-            if (a.getCode()==code){
-                String id_aux = ", items_" + String.valueOf(count) + "_id: " + String.valueOf(a.getID());
-                String code_aux = ", items_" + String.valueOf(count) + "_code: " + String.valueOf(a.getCode());
-                String title_aux = ", items_" + String.valueOf(count) + "_title: " + String.valueOf(a.getTitle());
-                auctions_found += id_aux + code_aux + title_aux;
-                count++;
-            }
-        }
-        return "type: search_auction , items_count: "+String.valueOf(count)+auctions_found;
-        */
     }
 
     @Override
@@ -99,10 +84,10 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     }
 
     @Override
-    public ArrayList<Auction> my_auctions(String name) throws RemoteException {
+    public ArrayList<Auction> my_auctions(String username) throws RemoteException {
         ArrayList<Auction> user_aucs = new ArrayList<>();
         for (Auction a:auctions){
-            if (a.getOwner().equals(name)){
+            if (a.getOwner().equals(username)){
                 user_aucs.add(a);
             }
         }

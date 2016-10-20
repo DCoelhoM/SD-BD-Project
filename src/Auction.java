@@ -56,10 +56,14 @@ public class Auction implements Serializable {
     }
 
     public boolean addBid(String username, int value){
-        int last_bid = (Integer) bids.values().toArray()[bids.values().size()-1];
-        if (value<last_bid){
-            bids.put(username,value);
-            return true;
+        if (!username.equals(this.owner)) {
+            int last_bid = (Integer) bids.values().toArray()[bids.values().size() - 1];
+            if (value < last_bid) {
+                bids.put(username, value);
+                return true;
+            } else {
+                return false;
+            }
         }
         return false;
     }

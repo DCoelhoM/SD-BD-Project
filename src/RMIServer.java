@@ -10,7 +10,7 @@ interface RMIServer extends java.rmi.Remote {
     boolean create_auction(String owner, long code, String title, String description, Date deadline, int amount) throws java.rmi.RemoteException;
     ArrayList<Auction> search_auction(long code) throws java.rmi.RemoteException;
     Auction detail_auction(int id) throws java.rmi.RemoteException;
-    ArrayList<Auction> my_auctions(String name) throws java.rmi.RemoteException;
+    ArrayList<Auction> my_auctions(String username) throws java.rmi.RemoteException;
     boolean bid(int id, String username, int amount) throws java.rmi.RemoteException;
     boolean edit_auction() throws java.rmi.RemoteException;
     boolean message(int auction_id, String name, String msg) throws java.rmi.RemoteException;
