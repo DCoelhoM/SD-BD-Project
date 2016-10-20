@@ -55,16 +55,17 @@ public class Auction implements Serializable {
         }
     }
 
-    public void bid(String name, int value){
-        for (int i=0;i<5;i++){
-            bids.put("BIDDD"+String.valueOf(i),100*(i+1));
-        }
-        int first_bid = (Integer) bids.values().toArray()[0];
+    public boolean addBid(String username, int value){
         int last_bid = (Integer) bids.values().toArray()[bids.values().size()-1];
-        System.out.println("First bid: "+first_bid);
-        System.out.println("Last bid: "+last_bid);
-        System.out.println(bids);
+        if (value<last_bid){
+            bids.put(username,value);
+            return true;
+        }
+        return false;
+    }
 
+    public void addMsg(String username, String msg){
+        messages.put(username,msg);
     }
 
     public int getID(){
@@ -113,9 +114,9 @@ public class Auction implements Serializable {
 
     public static void main(String args[]){
         Auction teste = new Auction("DINIS", 123456,"LALALA","LEILAO TESTE",new Date(),10);
-        teste.bid("lalala",5);
+
         Auction teste1 = new Auction("DINIS", 123456,"LALALA","LEILAO TESTE2",new Date(),10);
-        teste.bid("lala2",10);
+
         System.out.println(teste);
         System.out.println(teste1);
     }
