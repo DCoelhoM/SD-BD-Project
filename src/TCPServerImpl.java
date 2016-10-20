@@ -124,8 +124,7 @@ class Connection extends Thread {
                 search_auction(parsedInput);
                 break;
             case "detail_auction":
-                System.out.println("123");
-                break;
+                detail_auction(parsedInput);
             case "my_auctions":
                 System.out.println("123");
                 break;
@@ -225,8 +224,10 @@ class Connection extends Thread {
         }
     }
 
-    private void bid(LinkedHashMap<String, String> parsedInput){
+    // type : detail_auction , id : 101
+    private void detail_auction(LinkedHashMap<String, String> parsedInput){
 
     }
+
 }
 
