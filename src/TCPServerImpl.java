@@ -123,13 +123,13 @@ class Connection extends Thread {
                 detail_auction(parsedInput);
                 break;
             case "my_auctions":
-                my_auctions(parsedInput);
+                my_auctions();
                 break;
             case "bid":
-                System.out.println("123");
+                bid(parsedInput);
                 break;
             case "edit_auction":
-                System.out.println("123");
+                edit_auction(parsedInput);
                 break;
             case "message":
                 System.out.println("123");
@@ -283,18 +283,70 @@ class Connection extends Thread {
     }
 
     // type : my_auctions
-    private void my_auctions(LinkedHashMap<String, String> parsedInput){
-        ArrayList<Auction> user_auctions = new ArrayList<>();
+    private void my_auctions(){
+        ArrayList<Auction> user_auctions;
 
         try {
             user_auctions = TCPServerImpl.RMI.my_auctions(this.username);
             out.println(user_auctions);
         } catch (RemoteException e) {
-            e.printStackTrace();
+            try {
+                System.out.println("Connection with problems...");
+                Thread.sleep(5000);
+            } catch (InterruptedException e1) {
+                e1.printStackTrace();
+            }
+            TCPServerImpl.rmiConnection();
+            my_auctions();
         }
-
-
     }
+
+    // type : bid , id : 101, amount : 9
+    private void bid(LinkedHashMap<String, String> parsedInput){
+        int id = Integer.parseInt(parsedInput.get("id"));
+        int amount = Integer.parseInt(parsedInput.get("amount"));
+
+        try {
+            if(TCPServerImpl.RMI.bid(id,this.username, amount)){
+                out.println("type : bid , ok : true");
+            } else {
+                out.println("type : bid , ok : false");
+            }
+        } catch (RemoteException e) {
+            try {
+                System.out.println("Connection with problems...");
+                Thread.sleep(5000);
+            } catch (InterruptedException e1) {
+                e1.printStackTrace();
+            }
+            TCPServerImpl.rmiConnection();
+            bid(parsedInput);
+        }
+    }
+
+    // type : e di t _ a u c ti o n , i d : 101 , de a dli ne : 2017!01!02 00:01
+    private void edit_auction(LinkedHashMap<String, String> parsedInput){
+        int id = Integer.parseInt(parsedInput.get("id"));
+
+        try {
+            if(TCPServerImpl.RMI.edit_auction(this.username, id, parsedInput)){
+                out.println("type : edit_auction , ok : true");
+            } else {
+                out.println("type : edit_auction , ok : false");
+            }
+        }catch (RemoteException e) {
+            try {
+                System.out.println("Connection with problems...");
+                Thread.sleep(5000);
+            } catch (InterruptedException e1) {
+                e1.printStackTrace();
+            }
+            TCPServerImpl.rmiConnection();
+            edit_auction(parsedInput);
+        }
+    }
+
+
 
 }
 

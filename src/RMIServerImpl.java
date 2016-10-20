@@ -15,6 +15,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     public RMIServerImpl() throws java.rmi.RemoteException{
         super();
         auctions = Collections.synchronizedList(new ArrayList<>());
+
         users = Collections.synchronizedList(new ArrayList<>());
     }
     private boolean checkUsernameAvailability(String username){
@@ -202,79 +203,82 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         ObjectFile file = new ObjectFile();
         try {
             file.openWrite("auctions");
+            try {
+                file.writeObject(this.auctions);
+            } catch (IOException e) {
+                System.out.println("Problem saving auctions");
+            }
+            try {
+                file.closeWrite();
+            } catch (IOException e) {
+                System.out.println("Problem close auctions file(WRITE MODE).");
+            }
         } catch (IOException e) {
             System.out.println("Problem opening auctions file(WRITE MODE).");
         }
-        try {
-            file.writeObject(this.auctions);
-        } catch (IOException e) {
-            System.out.println("Problem saving auctions");
-        }
-        try {
-            file.closeWrite();
-        } catch (IOException e) {
-            System.out.println("Problem close auctions file(WRITE MODE).");
-        }
+
     }
 
     public void saveUsers(){
         ObjectFile file = new ObjectFile();
         try {
             file.openWrite("users");
+            try {
+                file.writeObject(this.users);
+            } catch (IOException e) {
+                System.out.println("Problem saving users");
+            }
+            try {
+                file.closeWrite();
+            } catch (IOException e) {
+                System.out.println("Problem closing users file(WRITE MODE).");
+            }
         } catch (IOException e) {
             System.out.println("Problem opening users file(WRITE MODE)");
         }
-        try {
-            file.writeObject(this.users);
-        } catch (IOException e) {
-            System.out.println("Problem saving users");
-        }
-        try {
-            file.closeWrite();
-        } catch (IOException e) {
-            System.out.println("Problem closing users file(WRITE MODE).");
-        }
+
     }
 
     public void loadAuctions(){
         ObjectFile file = new ObjectFile();
         try {
             file.openRead("auctions");
+            try {
+                this.auctions = (List<Auction>) file.readObject();
+            } catch (IOException | ClassNotFoundException e) {
+                System.out.println("Problem loading auctions");
+            }
+
+            try {
+                file.closeRead();
+            } catch (IOException e) {
+                System.out.println("Problem closing auctions file(READ MODE)");
+            }
         } catch (IOException e) {
             System.out.println("Problem opening auctions file(READ MODE)(No auctions found)");
         }
 
-        try {
-            this.auctions= (ArrayList<Auction>) file.readObject();
-        } catch (IOException | ClassNotFoundException e) {
-            System.out.println("Problem loading auctions");
-        }
 
-        try {
-            file.closeRead();
-        } catch (IOException e) {
-            System.out.println("Problem closing auctions file(READ MODE)");
-        }
     }
 
     public void loadUsers(){
         ObjectFile file = new ObjectFile();
         try {
             file.openRead("users");
+
+            try {
+                this.users = (List<User>) file.readObject();
+            } catch (IOException | ClassNotFoundException e) {
+                System.out.println("Problem loading users");
+            }
+
+            try {
+                file.closeRead();
+            } catch (IOException e) {
+                System.out.println("Problem closing users file(READ MODE)");
+            }
         } catch (IOException e) {
             System.out.println("Problem opening users file(READ MODE)(No users found)");
-        }
-
-        try {
-            this.auctions= (ArrayList<Auction>) file.readObject();
-        } catch (IOException | ClassNotFoundException e) {
-            System.out.println("Problem loading users");
-        }
-
-        try {
-            file.closeRead();
-        } catch (IOException e) {
-            System.out.println("Problem closing users file(READ MODE)");
         }
 
     }
