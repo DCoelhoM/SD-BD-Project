@@ -2,10 +2,10 @@ import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.*;
 
 public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implements RMIServer{
     private List<Auction> auctions;
@@ -87,7 +87,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     public ArrayList<Auction> my_auctions(String username) throws RemoteException {
         ArrayList<Auction> user_aucs = new ArrayList<>();
         for (Auction a:auctions){
-            if (a.getOwner().equals(username)){
+            if (a.getOwner().equals(username) || a.checkUserBidActivity(username) || a.checkUserMessageActivity(username)){
                 user_aucs.add(a);
             }
         }
@@ -105,7 +105,33 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     }
 
     @Override
-    public boolean edit_auction() throws RemoteException {
+    public boolean edit_auction(String username, int id, HashMap<String,String> data) throws RemoteException {
+        for (Auction a:auctions){
+            if (a.getID()==id){
+                if (!a.checkBids()){
+                    if (data.containsKey("code")){
+                        a.setCode(Long.parseLong(data.get("code")));
+                    }
+                    if (data.containsKey("title")){
+                        a.setTitle(data.get("title"));
+                    }
+                    if (data.containsKey("description")){
+                        a.setDescription(data.get("description"));
+                    }
+                    if (data.containsKey("deadline")){
+                        DateFormat df = new SimpleDateFormat("dd-MM-yyyy HH:mm");
+                        try {
+                            a.setDeadline(df.parse(data.get("deadline")));
+                        } catch (ParseException e) {
+                            System.out.println("Problems with parsing deadline.");
+                        }
+                    }
+                    if (data.containsKey("amount")){
+                       a.setAmount(Integer.parseInt(data.get("amount")));
+                    }
+                }
+            }
+        }
         return false;
     }
 
@@ -126,12 +152,31 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     }
 
     @Override
-    public boolean cancel_auction(long code) throws RemoteException {
+    public boolean cancel_auction(int id) throws RemoteException {
+        for (Auction a:auctions){
+            if (a.getID()==id){
+                a.cancelAuction();
+                return true;
+            }
+        }
         return false;
     }
 
     @Override
-    public boolean ban_user(String name) throws RemoteException {
+    public boolean ban_user(String username) throws RemoteException {
+        for (User u:users){
+            if (u.getUsername().equals(username)){
+                for (Auction a:auctions){
+                    //Cancelar auctions do utilizador
+                    if (a.getOwner().equals(username)){
+                        a.cancelAuction();
+                    } else if (a.checkUserBidActivity(username)){ //confirmar se fez licitações nos leilões
+                        a.removeUserBids(username);
+                        a.addMsg("NOTIFICATION","SORRY FOR THE PROBLEM");
+                    }
+                }
+            }
+        }
         return false;
     }
 

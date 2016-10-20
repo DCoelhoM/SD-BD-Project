@@ -1,8 +1,12 @@
 public class User {
+    private String type; // "admin", "user"
+    private String state; // "active", "banned"
     private String username;
     private String password;
 
     public User(String username, String password){
+        this.type = "user";
+        this.state = "active";
         this.username = username;
         this.password = password;
     }

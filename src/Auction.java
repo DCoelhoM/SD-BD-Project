@@ -12,8 +12,8 @@ public class Auction implements Serializable {
     private String description;
     private Date deadline;
     private int amount;
-    private Map<String,Integer> bids;
-    private Map<String,String> messages;
+    private List<Map.Entry<String,Integer>> bids;
+    private List<Map.Entry<String,String>> messages;
 
     public Auction(String mail, long code, String title, String description, Date deadline, int amount) {
         this.state = "active";
@@ -43,8 +43,8 @@ public class Auction implements Serializable {
         this.description = description;
         this.deadline = deadline;
         this.amount = amount;
-        this.bids = Collections.synchronizedMap(new LinkedHashMap<String, Integer>());
-        this.messages = Collections.synchronizedMap(new LinkedHashMap<String, String>());
+        this.bids = Collections.synchronizedList(new ArrayList<Map.Entry<String, Integer>>());
+        this.messages = Collections.synchronizedList(new ArrayList<Map.Entry<String, String>>());
 
         try {
             previous_id.openWriteOW(filename);
@@ -55,21 +55,76 @@ public class Auction implements Serializable {
         }
     }
 
-    public boolean addBid(String username, int value){
-        if (!username.equals(this.owner)) {
-            int last_bid = (Integer) bids.values().toArray()[bids.values().size() - 1];
-            if (value < last_bid) {
-                bids.put(username, value);
+    public boolean checkUserBidActivity(String username){
+        for (Map.Entry<String,Integer> b : bids){
+            if (b.getKey().equals(username)){
                 return true;
-            } else {
-                return false;
             }
         }
         return false;
     }
 
+    public boolean checkUserMessageActivity(String username){
+        for (Map.Entry<String,String> m : messages){
+            if (m.getKey().equals(username)){
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean addBid(String username, int value){
+        if (!username.equals(this.owner)) {
+            if (value>0 && value<amount) {
+                if (bids.size() > 0) {
+                    int last_bid = bids.get(bids.size() - 1).getValue();
+                    if (value < last_bid) {
+                        bids.add(new AbstractMap.SimpleEntry<>(username, value));
+                        return true;
+                    }
+                } else {
+                    bids.add(new AbstractMap.SimpleEntry<>(username, value));
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public void removeUserBids(String username){
+        int n_bids = bids.size();
+
+        int amount=0;
+        int index_first_occur=0;
+        for (int i = 0 ; i < n_bids; i++){
+            if(bids.get(i).getKey().equals(username)){
+                amount=bids.get(i).getValue();
+                index_first_occur=i;
+                break;
+            }
+        }
+
+        if(!bids.get(n_bids-1).getKey().equals(username)){
+            bids.get(n_bids-1).setValue(amount);
+        } else {
+            bids.remove(n_bids-1);
+        }
+
+        for(int i = n_bids - 2; i >= index_first_occur; i--){
+            bids.remove(i);
+        }
+    }
+
     public void addMsg(String username, String msg){
-        messages.put(username,msg);
+        messages.add(new AbstractMap.SimpleEntry<>(username, msg));
+    }
+
+    public void cancelAuction(){
+        this.state = "canceled";
+    }
+
+    public void endAuction(){
+        this.state = "ended";
     }
 
     public int getID(){
@@ -88,6 +143,30 @@ public class Auction implements Serializable {
         return title;
     }
 
+    public void setCode(long code) {
+        this.code = code;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public void setDeadline(Date deadline) {
+        this.deadline = deadline;
+    }
+
+    public void setAmount(int amount) {
+        this.amount = amount;
+    }
+
+    public boolean checkBids(){
+        return bids.size() > 0;
+    }
+
     @Override
     public String toString() {
         int msg_count = messages.size();
@@ -96,7 +175,7 @@ public class Auction implements Serializable {
         String aux_details = "title: " + title + ", description: " + description + ", deadline: " + deadline.toString() + ", messages_count: " + String.valueOf(msg_count);
 
         int i=0;
-        for (Map.Entry<String,String> m : messages.entrySet()){
+        for (Map.Entry<String,String> m : messages){
             String user = ", messages_" + String.valueOf(i) + "_user: " + m.getKey();
             String msg = ", messages_" + String.valueOf(i) + "_text: " + m.getValue();
             aux_details += user + msg;
@@ -106,9 +185,9 @@ public class Auction implements Serializable {
         aux_details+= ", bids_count: " + String.valueOf(bids_count);
 
         int j=0;
-        for (Map.Entry<String,Integer> b : bids.entrySet()){
-            String user = ", messages_" + String.valueOf(j) + "_user: " + b.getKey();
-            String amount = ", messages_" + String.valueOf(j) + "_amount: " + String.valueOf(b.getValue());
+        for (Map.Entry<String,Integer> b : bids){
+            String user = ", bids_" + String.valueOf(j) + "_user: " + b.getKey();
+            String amount = ", bids_" + String.valueOf(j) + "_amount: " + String.valueOf(b.getValue());
             aux_details += user + amount;
             j++;
         }
@@ -118,11 +197,15 @@ public class Auction implements Serializable {
 
     public static void main(String args[]){
         Auction teste = new Auction("DINIS", 123456,"LALALA","LEILAO TESTE",new Date(),10);
-
-        Auction teste1 = new Auction("DINIS", 123456,"LALALA","LEILAO TESTE2",new Date(),10);
-
         System.out.println(teste);
-        System.out.println(teste1);
+        teste.addBid("jorge",100);
+        teste.addBid("jorge",90);
+        teste.addBid("pinho",80);
+        teste.addBid("jorge",70);
+        System.out.println(teste);
+        teste.removeUserBids("jorge");
+        System.out.println(teste);
+
     }
 }
 
