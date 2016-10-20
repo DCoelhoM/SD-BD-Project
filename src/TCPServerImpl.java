@@ -237,8 +237,20 @@ class Connection extends Thread {
     }
 
     // type : detail_auction , id : 101
+    /*
+    type : detail_auction , title : 1984, description : big brother i swa tching you , de a dli ne : 2017!01!01 00 :01 , messages_coun t :2, messages_0_user : pierre , messages_0_text : qual a editora?, messages_1_user : pierre , messages_1_text : entretanto vi que era a antigona , bids_count : 0
+     */
+    // TODO: mudar o toString disto.
     private void detail_auction(LinkedHashMap<String, String> parsedInput){
+        int id = Integer.parseInt(parsedInput.get("id"));
 
+        Auction auction;
+        try {
+            auction = TCPServerImpl.RMI.detail_auction(id);
+            out.println(auction);
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
     }
 
 }
