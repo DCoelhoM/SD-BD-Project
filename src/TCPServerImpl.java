@@ -146,19 +146,25 @@ class Connection extends Thread {
 
     //type : login , username : pierre , password : omidyar
     //TODO: CHECK IF USER IS ALREADY LOGGED SO NO ONE CAN LOG WITHOUT HIM LOGGING FIRST
-    private void login(LinkedHashMap<String, String> parsedInput){
+    private void login(LinkedHashMap<String, String> parsedInput) {
         String username, password;
         username = parsedInput.get("username");
         password = parsedInput.get("password");
         try {
-            if(TCPServerImpl.RMI.login(username, password)){
-                this.username = username;
+            if (TCPServerImpl.RMI.login(username, password)) {
                 out.println("type : login , ok : true");
             } else {
                 out.println("type : login , ok : false");
             }
-        } catch (RemoteException e) {
-            e.printStackTrace();
+        } catch (IOException e) {
+            try {
+                System.out.println("Connection with problems...");
+                Thread.sleep(5000);
+            } catch (InterruptedException e1) {
+                e1.printStackTrace();
+            }
+            TCPServerImpl.rmiConnection();
+            login(parsedInput);
         }
     }
 
