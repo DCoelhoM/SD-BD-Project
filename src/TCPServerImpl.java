@@ -111,7 +111,7 @@ class Connection extends Thread {
                 create_auction(parsedInput);
                 break;
             case "search_auction":
-                System.out.println("123");
+                search_auction(parsedInput);
                 break;
             case "detail_auction":
                 System.out.println("123");
@@ -208,6 +208,16 @@ class Connection extends Thread {
         }
     }
 
+    // type : search_auction , code:9780451524935
+    private void search_auction(LinkedHashMap<String, String> parsedInput){
+        long code;
+        code = Long.parseLong(parsedInput.get("code"));
 
+        try {
+            System.out.println(RMI.search_auction(code));
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
+    }
 }
 
