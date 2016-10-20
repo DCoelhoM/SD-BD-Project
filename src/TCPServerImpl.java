@@ -1,24 +1,22 @@
 import java.net.*;
 import java.io.*;
+import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
-import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.LinkedHashMap;
-import java.util.Locale;
 
 public class TCPServerImpl extends java.rmi.server.UnicastRemoteObject implements TCPServer{
-
+    static RMIServer RMI = null;
     public TCPServerImpl()  throws java.rmi.RemoteException{
         super();
     }
 
     public static void main(String args[]){
         try {
-            RMIServer RMI = (RMIServer) LocateRegistry.getRegistry(7000).lookup("iBei");
+            rmiConnection();
             int number=0;
             try {
                 int serverPort = 6000;
@@ -29,7 +27,7 @@ public class TCPServerImpl extends java.rmi.server.UnicastRemoteObject implement
                     Socket clientSocket = listenSocket.accept(); // BLOQUEANTE
                     System.out.println("CLIENT_SOCKET (created at accept())="+clientSocket);
                     number++;
-                    new Connection(RMI, clientSocket, number);
+                    new Connection(clientSocket, number);
                 }
             } catch(IOException e) {
                 System.out.println("Listen:" + e.getMessage());
@@ -38,23 +36,29 @@ public class TCPServerImpl extends java.rmi.server.UnicastRemoteObject implement
             System.out.println("Exception in main: " + e);
         }
     }
+    static void rmiConnection(){
+        try {
+            TCPServerImpl.RMI = (RMIServer) LocateRegistry.getRegistry(7000).lookup("iBei");
+        } catch (RemoteException | NotBoundException e1) {
+            e1.printStackTrace();
+        }
+    }
 }
 
 class Connection extends Thread {
-    private DataInputStream in;
-    private DataOutputStream out;
+    PrintWriter out;
+    BufferedReader in = null;
     private Socket clientSocket;
     private int thread_number;
-    private RMIServer RMI;
     private String username;
 
-    public Connection (RMIServer RMI, Socket newClientSocket, int number) {
-        this.RMI = RMI;
+    public Connection (Socket newClientSocket, int number) {
         this.thread_number = number;
         try{
             this.clientSocket = newClientSocket;
-            this.in = new DataInputStream(this.clientSocket.getInputStream());
-            this.out = new DataOutputStream(this.clientSocket.getOutputStream());
+            this.in = new BufferedReader(new InputStreamReader(this.clientSocket.getInputStream()));
+            this.out = new PrintWriter(this.clientSocket.getOutputStream(), true);
+
             this.start();
         }catch(IOException e){System.out.println("Connection:" + e.getMessage());}
     }
@@ -64,11 +68,11 @@ class Connection extends Thread {
         try{
             while(true){
                 //an echo server
-                String data = in.readUTF();
+                String data = in.readLine();
                 System.out.println("T["+thread_number + "] Recebeu: "+data);
                 parseUserInput(data);
                 //resposta=String.valueOf(RMI.register("Dinis","dinis","dinis"));
-                //out.writeUTF(resposta);
+                //out.println(resposta);
             }
         }catch(EOFException e){System.out.println("EOF:" + e);
         }catch(IOException e){System.out.println("IO:" + e);}
@@ -95,6 +99,11 @@ class Connection extends Thread {
     private void chosenType(LinkedHashMap<String, String> parsedInput){
         String type = parsedInput.get("type");
 
+        /* TODO: type: logout
+           TODO: testar em 2 maquinas
+           TODO: usar packages
+           TODO: funcionalidades primeiro, tratamento de erros depois
+         */
         switch(type){
             case "login":
                 login(parsedInput);
@@ -141,15 +150,13 @@ class Connection extends Thread {
         username = parsedInput.get("username");
         password = parsedInput.get("password");
         try {
-            if(RMI.login(username, password)){
+            if(TCPServerImpl.RMI.login(username, password)){
                 this.username = username;
-                out.writeUTF("type : login , ok : true");
+                out.println("type : login , ok : true");
             } else {
-                out.writeUTF("type : login , ok : false");
+                out.println("type : login , ok : false");
             }
         } catch (RemoteException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
             e.printStackTrace();
         }
     }
@@ -161,10 +168,10 @@ class Connection extends Thread {
         password = parsedInput.get("password");
 
         try {
-            if(RMI.register(username, password)){
-                out.writeUTF("type : register , ok : true");
+            if(TCPServerImpl.RMI.register(username, password)){
+                out.println("type : register , ok : true");
             } else {
-                out.writeUTF("type : register , ok : false");
+                out.println("type : register , ok : false");
             }
         } catch (RemoteException e) {
             e.printStackTrace();
@@ -196,10 +203,10 @@ class Connection extends Thread {
         }
 
         try {
-            if(RMI.create_auction(this.username, code, title, description, deadline, amount)){
-                out.writeUTF("type : create_auction , ok : true");
+            if(TCPServerImpl.RMI.create_auction(this.username, code, title, description, deadline, amount)){
+                out.println("type : create_auction , ok : true");
             } else {
-                out.writeUTF("type : create_auction , ok : false");
+                out.println("type : create_auction , ok : false");
             }
         } catch (RemoteException e) {
             e.printStackTrace();
@@ -214,10 +221,14 @@ class Connection extends Thread {
         code = Long.parseLong(parsedInput.get("code"));
 
         try {
-            System.out.println(RMI.search_auction(code));
+            System.out.println(TCPServerImpl.RMI.search_auction(code));
         } catch (RemoteException e) {
             e.printStackTrace();
         }
+    }
+
+    private void bid(LinkedHashMap<String, String> parsedInput){
+
     }
 }
 
