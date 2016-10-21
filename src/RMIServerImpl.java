@@ -11,12 +11,13 @@ import java.util.*;
 public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implements RMIServer{
     private List<Auction> auctions;
     private List<User> users;
+    private List<Connection> online_users;
 
     public RMIServerImpl() throws java.rmi.RemoteException{
         super();
         auctions = Collections.synchronizedList(new ArrayList<>());
-
         users = Collections.synchronizedList(new ArrayList<>());
+        online_users = Collections.synchronizedList(new ArrayList<>());
     }
     private boolean checkUsernameAvailability(String username){
         for (User u:users){
@@ -40,8 +41,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
 
     private boolean checkCredentials(String username, String password){
         for (User u : users){
-            if (u.getUsername().equals(username)){
-                //Wrong pw
+            if (u.getUsername().equals(username) && u.getState().equals("active")){
                 return u.getPassword().equals(password);
             }
         }
@@ -159,10 +159,15 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     }
 
     public void end_auctions(){
+        boolean flag = false;
         for (Auction a:auctions){
             if (a.getDeadline().after(new Date())){
                 a.endAuction();
+                flag = true;
             }
+        }
+        if (flag){
+            saveAuctions();
         }
     }
 
@@ -182,6 +187,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     public boolean ban_user(String username) throws RemoteException {
         for (User u:users){
             if (u.getUsername().equals(username)){
+                u.ban();
                 for (Auction a:auctions){
                     //Cancelar auctions do utilizador
                     if (a.getOwner().equals(username)){
