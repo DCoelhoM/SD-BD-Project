@@ -128,6 +128,15 @@ public class Auction implements Serializable {
         this.state = "ended";
     }
 
+    public ArrayList<String> getParticipants(){
+        ArrayList<String> users = new ArrayList<>();
+        users.add(this.owner);
+        for (Map.Entry<String,String> m:messages){
+            users.add(m.getKey());
+        }
+        return users;
+    }
+
     public int getID(){
         return id;
     }

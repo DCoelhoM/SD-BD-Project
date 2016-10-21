@@ -12,12 +12,17 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     private List<Auction> auctions;
     private List<User> users;
     private List<Connection> online_users;
+    private List<Map.Entry<String,Integer>> notifications;
+    private List<TCPServer> connected_TCPs;
+
 
     public RMIServerImpl() throws java.rmi.RemoteException{
         super();
         auctions = Collections.synchronizedList(new ArrayList<>());
         users = Collections.synchronizedList(new ArrayList<>());
         online_users = Collections.synchronizedList(new ArrayList<>());
+        notifications = Collections.synchronizedList(new ArrayList<>());
+        connected_TCPs = Collections.synchronizedList(new ArrayList<>());
     }
     private boolean checkUsernameAvailability(String username){
         for (User u:users){
@@ -52,6 +57,19 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     public boolean login(String username, String password) throws RemoteException {
         return checkCredentials(username, password);
     }
+
+    /* TODO
+    @Override
+    public void addOnlineUser(Connection c) throws RemoteException {
+        System.out.println("TOTLTTOASTBJGHIO");
+        online_users.add(c);
+    }
+
+    @Override
+    public void disconnectUser(String username) throws RemoteException {
+
+    }
+    */
 
     @Override
     public boolean create_auction(String owner, long code, String title, String description, Date deadline, int amount) throws RemoteException {
@@ -140,12 +158,38 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         }
         return false;
     }
+    //TODO
+    private Connection checkIfUserOnline(String username){
+        for (Connection c:online_users){
+            if(c.getUsername().equals(username)){
+                return c;
+            }
+        }
+        return null;
+    }
+    //TODO
+    private void sendNotification(){
+        //type: notification, auction_id: id
+        for (Map.Entry<String,Integer> n:notifications){
+            Connection c = checkIfUserOnline(n.getKey());
+            if(c!=null){
+                c.out.println("TototOTOTOTOTOTSALVIO");
+            }
+        }
+
+
+    }
 
     @Override
     public boolean message(int auction_id, String username, String msg) throws RemoteException {
         for (Auction a:auctions){
             if (a.getID()==auction_id){
                 a.addMsg(username,msg);
+                ArrayList<String> users_to_notify = a.getParticipants();
+                for(String u:users_to_notify){
+                    notifications.add(new AbstractMap.SimpleEntry<>(u, auction_id));
+                }
+                sendNotification();
                 saveAuctions();
                 return true;
             }
@@ -212,7 +256,12 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     public String ping() throws RemoteException {
         return "Pong";
     }
-
+/*TODO
+    @Override
+    public void tcp_connected(TCPServer tcpServer) throws RemoteException {
+        connected_TCPs.add(tcpServer);
+    }
+*/
     public void saveAuctions(){
         ObjectFile file = new ObjectFile();
         try {
