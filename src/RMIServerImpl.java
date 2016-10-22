@@ -11,9 +11,9 @@ import java.util.*;
 public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implements RMIServer{
     private List<Auction> auctions;
     private List<User> users;
-    private List<Connection> online_users;
-    private List<Map.Entry<String,Integer>> notifications;
-    private List<TCPServer> connected_TCPs;
+    private List<Map.Entry<String,Integer>> online_users; //{Username, TCP_Port}
+    private List<Map.Entry<Integer,TCPServer>> connected_TCPs; //{TCP_Port, TCPServer}
+    private List<Map.Entry<String,Integer>> notifications; //{Username, Auction_ID}
 
 
     public RMIServerImpl() throws java.rmi.RemoteException{
@@ -21,9 +21,15 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         auctions = Collections.synchronizedList(new ArrayList<>());
         users = Collections.synchronizedList(new ArrayList<>());
         online_users = Collections.synchronizedList(new ArrayList<>());
-        notifications = Collections.synchronizedList(new ArrayList<>());
         connected_TCPs = Collections.synchronizedList(new ArrayList<>());
+        notifications = Collections.synchronizedList(new ArrayList<>());
     }
+
+    @Override
+    public void addTCPServer(TCPServer tcp, int port) throws RemoteException{
+        connected_TCPs.add(new AbstractMap.SimpleEntry<>(port, tcp));
+    }
+
     private boolean checkUsernameAvailability(String username){
         for (User u:users){
             if (u.getUsername().equals(username)){
@@ -58,18 +64,20 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         return checkCredentials(username, password);
     }
 
-    /* TODO
     @Override
-    public void addOnlineUser(Connection c) throws RemoteException {
-        System.out.println("TOTLTTOASTBJGHIO");
-        online_users.add(c);
+    public void addOnlineUser(String username, int tcpport) throws RemoteException {
+        online_users.add(new AbstractMap.SimpleEntry<>(username, tcpport));
     }
 
     @Override
     public void disconnectUser(String username) throws RemoteException {
-
+        for (Map.Entry<String,Integer> u:online_users){
+            if(u.getKey().equals(username)){
+                online_users.remove(u);
+                break;
+            }
+        }
     }
-    */
 
     @Override
     public boolean create_auction(String owner, long code, String title, String description, Date deadline, int amount) throws RemoteException {
@@ -158,22 +166,34 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         }
         return false;
     }
+
     //TODO
-    private Connection checkIfUserOnline(String username){
-        for (Connection c:online_users){
-            if(c.getUsername().equals(username)){
-                return c;
+    private int checkIfUserOnline(String username){
+        for (Map.Entry<String,Integer> u:online_users){
+            if(u.getKey().equals(username)){
+                return u.getValue(); //RETORNA A PORTA DO TCP SERVER QUE ESTÁ CONECTADO
+            }
+        }
+        return -1;
+    }
+    private TCPServer getTCPbyPort(int port){
+        for (Map.Entry<Integer,TCPServer> tcp:connected_TCPs){
+            if(tcp.getKey()==port){
+                return tcp.getValue();
             }
         }
         return null;
     }
-    //TODO
     private void sendNotification(){
         //type: notification, auction_id: id
         for (Map.Entry<String,Integer> n:notifications){
-            Connection c = checkIfUserOnline(n.getKey());
-            if(c!=null){
-                c.out.println("TototOTOTOTOTOTSALVIO");
+            int port = checkIfUserOnline(n.getKey());
+            if(port!=-1){
+                TCPServer tcp = getTCPbyPort(port);
+                if (tcp!=null){
+                    String msg = "type: notification, auction_id: " + String.valueOf(n.getValue());
+
+                }
             }
         }
 
@@ -256,12 +276,8 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     public String ping() throws RemoteException {
         return "Pong";
     }
-/*TODO
-    @Override
-    public void tcp_connected(TCPServer tcpServer) throws RemoteException {
-        connected_TCPs.add(tcpServer);
-    }
-*/
+
+
     public void saveAuctions(){
         ObjectFile file = new ObjectFile();
         try {

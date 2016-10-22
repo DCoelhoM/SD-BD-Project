@@ -4,9 +4,15 @@ import java.util.HashMap;
 
 interface RMIServer extends java.rmi.Remote {
 
+    //TCP
+    void addTCPServer(TCPServer tcp, int port) throws java.rmi.RemoteException;
+
     //USER
     boolean register(String username, String password) throws java.rmi.RemoteException;
     boolean login(String username, String password) throws java.rmi.RemoteException;
+    void addOnlineUser(String username, int tcpport) throws java.rmi.RemoteException;
+    void disconnectUser(String username) throws java.rmi.RemoteException;
+
     //AUCTIONS
     boolean create_auction(String owner, long code, String title, String description, Date deadline, int amount) throws java.rmi.RemoteException;
     ArrayList<Auction> search_auction(long code) throws java.rmi.RemoteException;
@@ -16,6 +22,7 @@ interface RMIServer extends java.rmi.Remote {
     boolean edit_auction(String username, int id, HashMap<String,String> data) throws java.rmi.RemoteException;
     boolean message(int auction_id, String name, String msg) throws java.rmi.RemoteException;
     ArrayList<String> online_users() throws java.rmi.RemoteException;
+
     //ADMIN
     boolean cancel_auction(int id) throws java.rmi.RemoteException;
     boolean ban_user(String username) throws java.rmi.RemoteException;
