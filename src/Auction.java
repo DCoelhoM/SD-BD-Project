@@ -132,7 +132,9 @@ public class Auction implements Serializable {
         ArrayList<String> users = new ArrayList<>();
         users.add(this.owner);
         for (Map.Entry<String,String> m:messages){
-            users.add(m.getKey());
+            if (!users.contains(m.getKey())){
+                users.add(m.getKey());
+            }
         }
         return users;
     }

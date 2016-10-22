@@ -12,7 +12,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     private List<Auction> auctions;
     private List<User> users;
     private List<Map.Entry<String,Integer>> online_users; //{Username, TCP_Port}
-    private List<Map.Entry<Integer,TCPServer>> connected_TCPs; //{TCP_Port, TCPServer}
+    private List<Map.Entry<Integer,TCPServer>> connected_TCPs; //{TCP_Port, TCPServer} TODO Se forem maquinas diferentes tem que receber o host tambem
     private List<Map.Entry<String,Integer>> notifications; //{Username, Auction_ID}
 
 
@@ -59,14 +59,17 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         return false; //username not found
     }
 
-    @Override
-    public boolean login(String username, String password) throws RemoteException {
-        return checkCredentials(username, password);
+    private void addOnlineUser(String username, int tcpport) throws RemoteException {
+        online_users.add(new AbstractMap.SimpleEntry<>(username, tcpport));
     }
 
     @Override
-    public void addOnlineUser(String username, int tcpport) throws RemoteException {
-        online_users.add(new AbstractMap.SimpleEntry<>(username, tcpport));
+    public boolean login(String username, String password, int tcpport) throws RemoteException {
+        if(checkCredentials(username, password)){
+            addOnlineUser(username,tcpport);
+            return true;
+        }
+        return false;
     }
 
     @Override
@@ -177,7 +180,11 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         return -1;
     }
     private TCPServer getTCPbyPort(int port){
+        System.out.println(port);
+        System.out.println(connected_TCPs);
         for (Map.Entry<Integer,TCPServer> tcp:connected_TCPs){
+            System.out.println("ENTRA AQUI????");
+            System.out.println(tcp.getKey());
             if(tcp.getKey()==port){
                 return tcp.getValue();
             }
@@ -187,12 +194,22 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     private void sendNotification(){
         //type: notification, auction_id: id
         for (Map.Entry<String,Integer> n:notifications){
+            System.out.println(n.getKey());
+            System.out.println(n.getValue());
             int port = checkIfUserOnline(n.getKey());
+            System.out.println("MAIS UM SOUT");
             if(port!=-1){
+                System.out.println("NAOSEI");
                 TCPServer tcp = getTCPbyPort(port);
+                System.out.println("YOLO");
                 if (tcp!=null){
+                    System.out.println("CHEGOU AQUI2!!!!");
                     String msg = "type: notification, auction_id: " + String.valueOf(n.getValue());
-
+                    try {
+                        tcp.sendNotification(n.getKey(),msg);
+                    } catch (RemoteException e) {
+                        System.out.println("TCP PARTIDO");
+                    }
                 }
             }
         }
@@ -207,6 +224,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
                 a.addMsg(username,msg);
                 ArrayList<String> users_to_notify = a.getParticipants();
                 for(String u:users_to_notify){
+                    System.out.println("CHEGOU AQUI!!!!");
                     notifications.add(new AbstractMap.SimpleEntry<>(u, auction_id));
                 }
                 sendNotification();

@@ -9,9 +9,8 @@ interface RMIServer extends java.rmi.Remote {
 
     //USER
     boolean register(String username, String password) throws java.rmi.RemoteException;
-    boolean login(String username, String password) throws java.rmi.RemoteException;
-    void addOnlineUser(String username, int tcpport) throws java.rmi.RemoteException;
-    void disconnectUser(String username) throws java.rmi.RemoteException;
+    boolean login(String username, String password, int tcpport) throws java.rmi.RemoteException;
+    void disconnectUser(String username) throws java.rmi.RemoteException; //TODO LOGOUT
 
     //AUCTIONS
     boolean create_auction(String owner, long code, String title, String description, Date deadline, int amount) throws java.rmi.RemoteException;

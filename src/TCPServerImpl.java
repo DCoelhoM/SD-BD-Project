@@ -5,12 +5,11 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.LinkedHashMap;
+import java.util.*;
 
 public class TCPServerImpl extends java.rmi.server.UnicastRemoteObject implements TCPServer{
     RMIServer RMI = null;
+    Notification notes = null;
     int port;
     public TCPServerImpl(int port)  throws java.rmi.RemoteException{
         super();
@@ -19,7 +18,7 @@ public class TCPServerImpl extends java.rmi.server.UnicastRemoteObject implement
 
     @Override
     public void sendNotification(String username, String msg) throws RemoteException {
-
+        notes.sendNotification(username,msg);
     }
 
     void rmiConnection(){
@@ -38,11 +37,13 @@ public class TCPServerImpl extends java.rmi.server.UnicastRemoteObject implement
         try {
             TCPServerImpl tcp = new TCPServerImpl(serverPort);
             tcp.rmiConnection();
+            tcp.RMI.addTCPServer((TCPServer)tcp,tcp.port);
             int number=0;
             try {
                 System.out.println("Listening on port 6000!");
                 ServerSocket listenSocket = new ServerSocket(serverPort);
                 System.out.println("LISTEN SOCKET="+listenSocket);
+                tcp.notes = new Notification();
                 while(true) {
                     Socket clientSocket = listenSocket.accept(); // BLOQUEANTE
                     System.out.println("CLIENT_SOCKET (created at accept())="+clientSocket);
@@ -145,7 +146,7 @@ class Connection extends Thread {
                 edit_auction(parsedInput);
                 break;
             case "message":
-                System.out.println("123");
+                message(parsedInput);
                 break;
             case "online_users":
                 System.out.println("123");
@@ -160,8 +161,9 @@ class Connection extends Thread {
         username = parsedInput.get("username");
         password = parsedInput.get("password");
         try {
-            if (tcp.RMI.login(username, password)) {
+            if (tcp.RMI.login(username, password,tcp.port)) {
                 out.println("type : login , ok : true");
+                tcp.notes.addConnectedUser(username,out);
                 this.username = username;
             } else {
                 out.println("type : login , ok : false");
@@ -357,5 +359,50 @@ class Connection extends Thread {
             tcp.rmiConnection();
             edit_auction(parsedInput);
         }
+    }
+
+    //public boolean message(int auction_id, String username, String msg) throws RemoteException {
+    private void message(LinkedHashMap<String, String> parsedInput){
+
+        String message = parsedInput.get("text");
+        int auction_id = Integer.parseInt(parsedInput.get("id"));
+
+        try {
+            if(tcp.RMI.message(auction_id, this.username, message)){
+                out.println("type : message , ok : true");
+            } else {
+                out.println("type : message , ok : false");
+            }
+        } catch (RemoteException e) {
+            try {
+                System.out.println("Connection with problems...");
+                Thread.sleep(5000);
+            } catch (InterruptedException e1) {
+                e1.printStackTrace();
+            }
+            tcp.rmiConnection();
+            edit_auction(parsedInput);
+        }
+
+    }
+}
+
+class Notification{
+    private Map<String,PrintWriter> connected_users; //{Username, Out}
+
+    public Notification() {
+        this.connected_users = Collections.synchronizedMap(new LinkedHashMap<String, PrintWriter>());;
+    }
+
+    public void sendNotification(String username, String msg) {
+        connected_users.get(username).println(msg);
+    }
+
+    public void addConnectedUser(String username, PrintWriter out){
+        connected_users.put(username,out);
+    }
+
+    public void removeUser(String username){
+        connected_users.remove(username);
     }
 }
