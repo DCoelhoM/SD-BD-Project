@@ -50,7 +50,7 @@ public class TCPServerImpl extends java.rmi.server.UnicastRemoteObject implement
                 ServerSocket listenSocket = new ServerSocket(serverPort);
                 System.out.println("LISTEN SOCKET="+listenSocket);
                 tcp.notes = new Notification();
-                udp = new UDPSender(serverPort);
+                udp = new UDPSender(serverPort, tcp);
                 udp.udpMessager();
 
                 // MULTICAST - RECEBER MENSAGENS UDP
@@ -201,8 +201,10 @@ class Connection extends Thread {
         String username, password;
         username = parsedInput.get("username");
         password = parsedInput.get("password");
+        System.out.println(tcp.port);
         try {
             if (tcp.RMI.login(username, password,tcp.port)) {
+                System.out.println(tcp.port);
                 out.println("type : login , ok : true");
                 tcp.notes.addConnectedUser(username,out);
                 this.username = username;
@@ -392,7 +394,7 @@ class Connection extends Thread {
         }
     }
 
-    // type : e di t _ a u c ti o n , i d : 101 , de a dli ne : 2017!01!02 00:01
+    // type : edit_auction , i d : 101 , deadline : 2017!01!02 00:01
     private void edit_auction(LinkedHashMap<String, String> parsedInput){
         int id = Integer.parseInt(parsedInput.get("id"));
 

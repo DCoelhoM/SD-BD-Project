@@ -6,6 +6,7 @@ interface RMIServer extends java.rmi.Remote {
 
     //TCP
     void addTCPServer(TCPServer tcp, int port) throws java.rmi.RemoteException;
+    int checkNumberUsers(int portNumber) throws java.rmi.RemoteException;
 
     //USER
     boolean register(String username, String password) throws java.rmi.RemoteException;

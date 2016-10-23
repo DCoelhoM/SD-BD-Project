@@ -30,6 +30,19 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         connected_TCPs.add(new AbstractMap.SimpleEntry<>(port, tcp));
     }
 
+    @Override
+    public int checkNumberUsers(int portNumber) throws RemoteException {
+        int counter = 0;
+        for(Map.Entry<String,Integer> u : online_users){
+            System.out.println("O u.getvalue é: ");
+            System.out.println(u.getValue());
+            if(u.getValue() == portNumber){
+                counter ++;
+            }
+        }
+        return counter;
+    }
+
     private boolean checkUsernameAvailability(String username){
         for (User u:users){
             if (u.getUsername().equals(username)){
