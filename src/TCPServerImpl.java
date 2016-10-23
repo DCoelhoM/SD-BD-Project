@@ -30,7 +30,11 @@ public class TCPServerImpl extends java.rmi.server.UnicastRemoteObject implement
     }
 
     public static void main(String args[]){
+        System.setProperty("java.net.preferIPv4Stack", "true");
         int serverPort = 6000;
+
+        UDPSender udp;
+
         if(args.length==1){
             serverPort = Integer.parseInt(args[0]);
         }
@@ -40,10 +44,39 @@ public class TCPServerImpl extends java.rmi.server.UnicastRemoteObject implement
             tcp.RMI.addTCPServer((TCPServer)tcp,tcp.port);
             int number=0;
             try {
-                System.out.println("Listening on port 6000!");
+                System.out.println("Listening on port " + serverPort);
                 ServerSocket listenSocket = new ServerSocket(serverPort);
                 System.out.println("LISTEN SOCKET="+listenSocket);
                 tcp.notes = new Notification();
+                udp = new UDPSender(serverPort);
+                
+                // MULTICAST - RECEBER MENSAGENS UDP
+                new Thread() {
+                    public void run() {
+                        MulticastSocket socket = null;
+                        try {
+                            socket = new MulticastSocket(5555); // 5555 é a PORTA
+                            socket.joinGroup(InetAddress.getByName("224.1.2.3")); // 224.1.2.3 É O ENDEREÇO DO GRUPO
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                        byte[] buf = new byte[1000];
+                        DatagramPacket message = new DatagramPacket(buf, buf.length);
+                        try {
+                            while (true) {
+                                System.out.println("á escuta de mensagem");
+                                socket.receive(message);
+                                System.out.println("Mensagem recebida");
+                                String parsedMessage = new String(message.getData(), 0, message.getLength());
+                                System.out.println(parsedMessage);
+                            }
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }.start();
+
+
                 while(true) {
                     Socket clientSocket = listenSocket.accept(); // BLOQUEANTE
                     System.out.println("CLIENT_SOCKET (created at accept())="+clientSocket);
