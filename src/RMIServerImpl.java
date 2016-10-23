@@ -63,24 +63,46 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         online_users.add(new AbstractMap.SimpleEntry<>(username, tcpport));
     }
 
-    @Override
-    public boolean login(String username, String password, int tcpport) throws RemoteException {
-        if(checkCredentials(username, password)){
-            addOnlineUser(username,tcpport);
-            return true;
+
+    public boolean userAlreadyLogged(String username){
+        for (Map.Entry<String, Integer> u : online_users) {
+            if (u.getKey().equals(username)) {
+                return true;
+            }
         }
         return false;
     }
 
     @Override
-    public void disconnectUser(String username) throws RemoteException {
-        for (Map.Entry<String,Integer> u:online_users){
-            if(u.getKey().equals(username)){
-                online_users.remove(u);
-                break;
+    public boolean login(String username, String password, int tcpport) throws RemoteException {
+        if(!userAlreadyLogged(username)){
+            if(checkCredentials(username, password)){
+                addOnlineUser(username,tcpport);
+                return true;
             }
         }
+        return false;
     }
+
+    @Override
+    public boolean logout(String username) throws RemoteException {
+        if(removeOnlineUser(username))
+            return true;
+        return false;
+    }
+
+
+    private boolean removeOnlineUser(String username) throws RemoteException {
+
+        for (Map.Entry<String, Integer> u : online_users) {
+            if (u.getKey().equals(username)) {
+                online_users.remove(u);
+                return true;
+            }
+        }
+        return false;
+    }
+
 
     @Override
     public boolean create_auction(String owner, long code, String title, String description, Date deadline, int amount) throws RemoteException {

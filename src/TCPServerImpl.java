@@ -1,3 +1,5 @@
+import sun.awt.image.ImageWatched;
+
 import java.net.*;
 import java.io.*;
 import java.rmi.NotBoundException;
@@ -158,6 +160,9 @@ class Connection extends Thread {
             case "login":
                 login(parsedInput);
                 break;
+            case "logout":
+                logout(parsedInput);
+                break;
             case "register":
                 register(parsedInput);
                 break;
@@ -185,6 +190,8 @@ class Connection extends Thread {
             case "online_users":
                 System.out.println("123");
                 break;
+            default:
+                break;
         }
     }
 
@@ -211,6 +218,18 @@ class Connection extends Thread {
             }
             tcp.rmiConnection();
             login(parsedInput);
+        }
+    }
+
+    private void logout(LinkedHashMap<String, String> parsedInput){
+        try {
+            if(tcp.RMI.logout(this.username)) {
+                out.println("type : logout, ok : true");
+            } else {
+                out.println("type : logout, ok : false");
+            }
+        } catch (RemoteException e) {
+            e.printStackTrace();
         }
     }
 
