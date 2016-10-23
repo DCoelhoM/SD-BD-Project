@@ -174,32 +174,31 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
 
     @Override
     public boolean edit_auction(String username, int id, HashMap<String,String> data) throws RemoteException {
-        for (Auction a:auctions){
+        for (Auction a : auctions){
             if (a.getID()==id && a.getOwner().equals(username)){
-                if (!a.checkBids()){
-                    if (data.containsKey("code")){
-                        a.setCode(Long.parseLong(data.get("code")));
-                    }
-                    if (data.containsKey("title")){
-                        a.setTitle(data.get("title"));
-                    }
-                    if (data.containsKey("description")){
-                        a.setDescription(data.get("description"));
-                    }
-                    if (data.containsKey("deadline")){
-                        DateFormat df = new SimpleDateFormat("dd-MM-yyyy HH:mm");
-                        try {
-                            a.setDeadline(df.parse(data.get("deadline")));
-                        } catch (ParseException e) {
-                            System.out.println("Problems with parsing deadline.");
-                        }
-                    }
-                    if (data.containsKey("amount")){
-                       a.setAmount(Integer.parseInt(data.get("amount")));
-                    }
-                    saveAuctions();
-                    return true;
+                a.setPrevious_auction_data("title: " + a.getTitle() + ", code: " + a.getCode() + ", description: " + a.getDescription() + ", deadline: " + a.getDeadline() + ", amount: " + a.getAmount());
+                if (data.containsKey("code")){
+                    a.setCode(Long.parseLong(data.get("code")));
                 }
+                if (data.containsKey("title")){
+                    a.setTitle(data.get("title"));
+                }
+                if (data.containsKey("description")){
+                    a.setDescription(data.get("description"));
+                }
+                if (data.containsKey("deadline")){
+                    DateFormat df = new SimpleDateFormat("dd-MM-yyyy HH:mm");
+                    try {
+                        a.setDeadline(df.parse(data.get("deadline")));
+                    } catch (ParseException e) {
+                        System.out.println("Problems with parsing deadline.");
+                    }
+                }
+                if (data.containsKey("amount")){
+                   a.setAmount(Integer.parseInt(data.get("amount")));
+                }
+                saveAuctions();
+                return true;
             }
         }
         return false;
@@ -278,7 +277,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     public void end_auctions(){
         boolean flag = false;
         for (Auction a:auctions){
-            if (a.getDeadline().after(new Date())){
+            if (a.getDeadline().before(new Date())){
                 a.endAuction();
                 flag = true;
             }
@@ -424,6 +423,8 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
             r.rebind("iBei", rmiServer);
             rmiServer.loadAuctions();
             rmiServer.loadUsers();
+
+            // Thread para acabar com leilões à hora certa
             new Thread() {
                 public void run() {
                     while(true) {

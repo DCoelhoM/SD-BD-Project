@@ -14,6 +14,7 @@ public class Auction implements Serializable {
     private int amount;
     private List<Map.Entry<String,Integer>> bids;
     private List<Map.Entry<String,String>> messages;
+    private List<String> previous_auction_data; // Arraylist that saves the edited auctions for each auction
 
     public Auction(String mail, long code, String title, String description, Date deadline, int amount) {
         this.state = "active";
@@ -45,6 +46,8 @@ public class Auction implements Serializable {
         this.amount = amount;
         this.bids = Collections.synchronizedList(new ArrayList<Map.Entry<String, Integer>>());
         this.messages = Collections.synchronizedList(new ArrayList<Map.Entry<String, String>>());
+        this.previous_auction_data = Collections.synchronizedList(new ArrayList<String>());
+
 
         try {
             previous_id.openWriteOW(filename);
@@ -163,8 +166,20 @@ public class Auction implements Serializable {
         return state;
     }
 
+    public String getDescription() {
+        return description;
+    }
+
+    public int getAmount() {
+        return amount;
+    }
+
     public void setCode(long code) {
         this.code = code;
+    }
+
+    public void setPrevious_auction_data(String previous_auction_data) {
+        this.previous_auction_data.add(previous_auction_data);
     }
 
     public void setTitle(String title) {
@@ -174,6 +189,7 @@ public class Auction implements Serializable {
     public void setDescription(String description) {
         this.description = description;
     }
+
 
     public void setDeadline(Date deadline) {
         this.deadline = deadline;

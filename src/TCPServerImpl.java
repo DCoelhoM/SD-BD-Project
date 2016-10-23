@@ -196,7 +196,6 @@ class Connection extends Thread {
     }
 
     // type : login , username : pierre , password : omidyar
-    //TODO: CHECK IF USER IS ALREADY LOGGED SO NO ONE CAN LOG WITHOUT HIM LOGGING FIRST
     private void login(LinkedHashMap<String, String> parsedInput) {
         String username, password;
         username = parsedInput.get("username");
@@ -394,7 +393,7 @@ class Connection extends Thread {
         }
     }
 
-    // type : edit_auction , i d : 101 , deadline : 2017!01!02 00:01
+    // type : edit_auction , id : 101 , amount : 25
     private void edit_auction(LinkedHashMap<String, String> parsedInput){
         int id = Integer.parseInt(parsedInput.get("id"));
 
