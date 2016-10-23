@@ -49,7 +49,8 @@ public class TCPServerImpl extends java.rmi.server.UnicastRemoteObject implement
                 System.out.println("LISTEN SOCKET="+listenSocket);
                 tcp.notes = new Notification();
                 udp = new UDPSender(serverPort);
-                
+                udp.udpMessager();
+
                 // MULTICAST - RECEBER MENSAGENS UDP
                 new Thread() {
                     public void run() {

@@ -10,7 +10,7 @@ public class UDPSender{
         UDPSender.serverPort = serverPort;
     }
 
-    public static void main(String args[]) {
+    public void udpMessager() {
 
         new Thread() { // SEND UDP MESSAGES
             public void run() {
