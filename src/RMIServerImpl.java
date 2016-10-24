@@ -162,10 +162,12 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     @Override
     public boolean bid(int id, String username, int amount) throws RemoteException {
         for (Auction a:auctions){
-            if (a.getID()==id){
-                if(a.addBid(username,amount)) {
-                    saveAuctions();
-                    return true;
+            if(a.getState().equals("active")){
+                if (a.getID()==id){
+                    if(a.addBid(username,amount)) {
+                        saveAuctions();
+                        return true;
+                    }
                 }
             }
         }
@@ -428,6 +430,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
             new Thread() {
                 public void run() {
                     while(true) {
+                        System.out.println("Chamei o end auctions");
                         rmiServer.end_auctions();
                         try {
                             Thread.sleep(60000);
