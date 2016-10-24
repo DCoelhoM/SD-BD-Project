@@ -150,6 +150,11 @@ public class Auction implements Serializable {
                 users.add(m.getKey());
             }
         }
+        for (Map.Entry<String,Double> b:bids){
+            if (!users.contains(b.getKey())){
+                users.add(b.getKey());
+            }
+        }
         return users;
     }
 
