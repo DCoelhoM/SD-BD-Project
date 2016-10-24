@@ -383,6 +383,7 @@ class Connection extends Thread {
     }
 
     // type : bid , id : 101, amount : 9
+    // TODO : NÃO DEIXAR BIDS ABAIXO DE 0
     private void bid(LinkedHashMap<String, String> parsedInput){
         int id = Integer.parseInt(parsedInput.get("id"));
         double amount = Double.parseDouble(parsedInput.get("amount"));
