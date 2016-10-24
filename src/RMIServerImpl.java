@@ -35,8 +35,6 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     public int checkNumberUsers(int portNumber) throws RemoteException {
         int counter = 0;
         for(Map.Entry<String,Integer> u : online_users){
-            System.out.println("O u.getvalue é: ");
-            System.out.println(u.getValue());
             if(u.getValue() == portNumber){
                 counter ++;
             }
@@ -163,7 +161,12 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
             if(a.getID()==id && a.getState().equals("active")){
                 String usertonotify = a.getUsernameLastBid();
                 int nbids = a.getNumberBids();
+
                 if(a.addBid(username,amount)) {
+                    if (!usertonotify.equals(a.getOwner())){
+                        String note = "type: notification_bid, id: " + id + ", user: " + username + ", amount: " + amount;
+                        notifications.add(new AbstractMap.SimpleEntry<>(a.getOwner(), note));
+                    }
                     if (nbids>0) {
                         String note = "type: notification_bid, id: " + id + ", user: " + username + ", amount: " + amount;
                         notifications.add(new AbstractMap.SimpleEntry<>(usertonotify, note));
@@ -218,11 +221,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         return -1;
     }
     private TCPServer getTCPbyPort(int port){
-        System.out.println(port);
-        System.out.println(connected_TCPs);
         for (Map.Entry<Integer,TCPServer> tcp:connected_TCPs){
-            System.out.println("ENTRA AQUI????");
-            System.out.println(tcp.getKey());
             if(tcp.getKey()==port){
                 return tcp.getValue();
             }
@@ -231,28 +230,35 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     }
     @Override
     public void sendNotification(){
+        System.out.println("ENTROU AGORA NAS NOTIFICAÇOES");
+        System.out.println(notifications);
         List<Map.Entry<String,String>> notes_to_delete = Collections.synchronizedList(new ArrayList<>());
-        for (Map.Entry<String,String> n:notifications){
-            System.out.println(n.getKey());
-            System.out.println(n.getValue());
-            int port = checkIfUserOnline(n.getKey());
-            if(port!=-1){
-                TCPServer tcp = getTCPbyPort(port);
-                if (tcp!=null){
-                    try {
-                        tcp.sendNotification(n.getKey(),n.getValue());
-                        notes_to_delete.add(n);
-                        System.out.println("A TUA MAE È QUE È BOA!!!!");
-                    } catch (RemoteException e) {
-                        System.out.println("TCP PARTIDO");
+        synchronized (notifications) {
+            for (Map.Entry<String, String> n : notifications) {
+                int port = checkIfUserOnline(n.getKey());
+                if (port != -1) {
+                    TCPServer tcp = getTCPbyPort(port);
+                    if (tcp != null) {
+                        try {
+                            System.out.println(n.getKey());
+                            System.out.println(n.getValue());
+                            tcp.sendNotification(n.getKey(), n.getValue());
+                            notes_to_delete.add(n);
+                            System.out.println("A TUA MAE È QUE È BOA!!!!");
+                        } catch (RemoteException e) {
+                            System.out.println("TCP PARTIDO");
+                        }
                     }
                 }
             }
         }
         for (Map.Entry<String,String> n:notes_to_delete){
+            System.out.println("YOLO?????");
             notifications.remove(n);
         }
-
+        System.out.println("FINAL NOTIFICATIONS");
+        System.out.println(notifications);
+        System.out.println("SAIU");
     }
 
     @Override
@@ -260,12 +266,11 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         for (Auction a:auctions){
             if (a.getID()==auction_id){
                 a.addMsg(username,msg);
-                String note =  "type: notification_message, id: "+ auction_id +", user: " + username + ", text: " + msg;
+                String note =  "type: notification_message, id: "+ auction_id +", user: " + username + ", text:" + msg;
                 ArrayList<String> users_to_notify = a.getParticipants();
                 for(String u:users_to_notify){
-                    notifications.add(new AbstractMap.SimpleEntry<>(u, note));
+                    synchronized (notifications){notifications.add(new AbstractMap.SimpleEntry<>(u, note));}
                 }
-                //sendNotification();
                 saveAuctions();
                 return true;
             }
