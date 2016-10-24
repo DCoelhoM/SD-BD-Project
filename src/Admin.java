@@ -9,6 +9,11 @@ import java.util.Scanner;
 public class Admin {
 
     RMIServer RMI = null;
+    PrintWriter out;
+    BufferedReader in = null;
+    private String username;
+    private int id;
+
 
     int port;
     public Admin(int port)  throws java.rmi.RemoteException{
@@ -36,8 +41,11 @@ public class Admin {
                 socket = new Socket(args[1], Integer.parseInt(args[2]));
             } else {
                 socket = new Socket("localhost", 6000);//TODO Antes da defesa mudar para 12345!!!!!!!!!!!!!!!!!<<<<<<<<<<<<----------------------------------------------------------
-
             }
+
+
+            Admin admin = new Admin(serverPort);
+            admin.rmiConnection();
 
             // create streams for writing to and reading from the socket
             inFromServer = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -49,93 +57,26 @@ public class Admin {
                     Scanner keyboardScanner = new Scanner(System.in);
                     while(!socket.isClosed()) {
                         String readKeyboard = keyboardScanner.nextLine();
-                        outToServer.println(readKeyboard);
+                        admin.parseAdminInput(readKeyboard);
                     }
                 }
             }.start();
+
 
             // the main thread loops reading from the server and writing to System.out
             String messageFromServer;
             while((messageFromServer = inFromServer.readLine()) != null)
                 System.out.println(messageFromServer);
 
-        } catch (IOException e) {
-            e.printStackTrace();
+        }  catch (IOException e) {
+            if(inFromServer == null)
+                System.out.println("\nUsage: java TCPClient <host> <port>\n");
+            System.out.println(e.getMessage());
+        } finally {
+            try { inFromServer.close(); } catch (Exception e) {}
         }
 
-
-        // RMI CONNECTION
-        try {
-            Admin admin = new Admin(serverPort);
-            admin.rmiConnection();
-            int number=0;
-            try {
-                System.out.println("Listening on port " + serverPort);
-                ServerSocket listenSocket = new ServerSocket(serverPort);
-                System.out.println("LISTEN SOCKET="+listenSocket);
-
-                while(true) {
-                    Socket clientSocket = listenSocket.accept(); // BLOQUEANTE
-                    System.out.println("CLIENT_SOCKET (created at accept())="+clientSocket);
-                    number++;
-                    new AdminConnection(clientSocket, number, admin);
-                }
-            } catch(IOException e) {
-                System.out.println("Listen:" + e.getMessage());
-            }
-        } catch (Exception e) {
-            System.out.println("Exception in main: " + e);
-        }
     }
-}
-
-
-
-
-// RMI CONNECTION
-class AdminConnection extends Thread {
-    PrintWriter out;
-    BufferedReader in = null;
-    private Socket clientSocket;
-    private int thread_number;
-    private String username;
-    private int id;
-    private Admin admin;
-
-    public AdminConnection(Socket newClientSocket, int number, Admin admin) {
-        this.thread_number = number;
-        try {
-            this.clientSocket = newClientSocket;
-            this.in = new BufferedReader(new InputStreamReader(this.clientSocket.getInputStream()));
-            this.out = new PrintWriter(this.clientSocket.getOutputStream(), true);
-            this.admin = admin;
-            this.start();
-        } catch (IOException e) {
-            System.out.println("Connection:" + e.getMessage());
-        }
-    }
-
-    //=============================
-    public void run() {
-        try {
-            while (true) {
-                //an echo server
-                String data = in.readLine();
-                System.out.println("T[" + thread_number + "] Recebeu: " + data);
-                parseAdminInput(data);
-            }
-        } catch (EOFException e) {
-            System.out.println("EOF:" + e);
-
-        } catch (IOException e) {
-            System.out.println("IO:" + e);
-        }
-    }
-
-
-    // type : test
-    // type : ban_user , username : dinis
-    // type : cancel_auction , id : 2
     private void parseAdminInput(String data){
         String[] aux;
         LinkedHashMap<String, String> parsedInput = new LinkedHashMap<String, String>();
@@ -151,7 +92,7 @@ class AdminConnection extends Thread {
         }
         System.out.println(parsedInput);
 
-        chosenType(parsedInput);
+        this.chosenType(parsedInput);
     }
 
     private void chosenType(LinkedHashMap<String, String> parsedInput) {
@@ -159,10 +100,13 @@ class AdminConnection extends Thread {
 
         switch(type){
             case "ban_user":
-                ban_user(parsedInput);
+                this.ban_user(parsedInput);
                 break;
             case "cancel_auction":
-                cancel_auction(parsedInput);
+                this.cancel_auction(parsedInput);
+                break;
+            case "test":
+                test();
                 break;
             default:
                 break;
@@ -173,7 +117,7 @@ class AdminConnection extends Thread {
         username = parsedInput.get("username");
 
         try {
-            if(admin.RMI.ban_user(username)){
+            if(this.RMI.ban_user(username)){
                 out.println("type : ban_user , status : ok");
             } else {
                 out.println("type : ban_user , status : false");
@@ -187,16 +131,19 @@ class AdminConnection extends Thread {
         id = Integer.parseInt(parsedInput.get("id"));
 
         try {
-            if(admin.RMI.cancel_auction(id)){
-                out.println("type : cancel_auction , status : ok");
+            if(this.RMI.cancel_auction(id)){
+                System.out.println("apaguei bem");
             } else {
-                out.println("type : cancel_auction , status : false");
+                System.out.println("nao apaguei");
             }
         } catch (RemoteException e) {
             e.printStackTrace();
         }
     }
 
-
-
+    private static void test(){
+        System.out.println("ola");
+    }
 }
+
+
