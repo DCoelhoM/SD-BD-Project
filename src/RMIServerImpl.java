@@ -73,6 +73,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
 
     private void addOnlineUser(String username, int tcpport) throws RemoteException {
         online_users.add(new AbstractMap.SimpleEntry<>(username, tcpport));
+        this.saveOnlineUsers();
     }
 
 
@@ -106,6 +107,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         for (Map.Entry<String, Integer> u : online_users) {
             if (u.getKey().equals(username)) {
                 online_users.remove(u);
+                this.saveOnlineUsers();
                 return true;
             }
         }
@@ -230,7 +232,6 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     }
     @Override
     public void sendNotification(){
-        System.out.println("ENTROU AGORA NAS NOTIFICAÇOES");
         System.out.println(notifications);
         List<Map.Entry<String,String>> notes_to_delete = Collections.synchronizedList(new ArrayList<>());
         synchronized (notifications) {
@@ -240,11 +241,8 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
                     TCPServer tcp = getTCPbyPort(port);
                     if (tcp != null) {
                         try {
-                            System.out.println(n.getKey());
-                            System.out.println(n.getValue());
                             tcp.sendNotification(n.getKey(), n.getValue());
                             notes_to_delete.add(n);
-                            System.out.println("A TUA MAE È QUE È BOA!!!!");
                         } catch (RemoteException e) {
                             System.out.println("TCP PARTIDO");
                         }
@@ -253,12 +251,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
             }
         }
         for (Map.Entry<String,String> n:notes_to_delete){
-            System.out.println("YOLO?????");
             notifications.remove(n);
         }
-        System.out.println("FINAL NOTIFICATIONS");
-        System.out.println(notifications);
-        System.out.println("SAIU");
+        this.saveNotifications();
     }
 
     @Override
@@ -383,6 +378,44 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         }
 
     }
+    public void saveOnlineUsers(){
+        ObjectFile file = new ObjectFile();
+        try {
+            file.openWrite("online_users");
+            try {
+                file.writeObject(this.online_users);
+            } catch (IOException e) {
+                System.out.println("Problem saving online_users");
+            }
+            try {
+                file.closeWrite();
+            } catch (IOException e) {
+                System.out.println("Problem closing online_users file(WRITE MODE).");
+            }
+        } catch (IOException e) {
+            System.out.println("Problem opening online_users file(WRITE MODE)");
+        }
+
+    }
+
+    public void saveNotifications(){
+        ObjectFile file = new ObjectFile();
+        try {
+            file.openWrite("notifications");
+            try {
+                file.writeObject(this.notifications);
+            } catch (IOException e) {
+                System.out.println("Problem saving notifications");
+            }
+            try {
+                file.closeWrite();
+            } catch (IOException e) {
+                System.out.println("Problem closing notifications file(WRITE MODE).");
+            }
+        } catch (IOException e) {
+            System.out.println("Problem opening notifications file(WRITE MODE)");
+        }
+    }
 
     public void loadAuctions(){
         ObjectFile file = new ObjectFile();
@@ -402,8 +435,6 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         } catch (IOException e) {
             System.out.println("Problem opening auctions file(READ MODE)(No auctions found)");
         }
-
-
     }
 
     public void loadUsers(){
@@ -425,6 +456,48 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         } catch (IOException e) {
             System.out.println("Problem opening users file(READ MODE)(No users found)");
         }
+    }
+
+    public void loadOnlineUsers(){
+        ObjectFile file = new ObjectFile();
+        try {
+            file.openRead("online_users");
+
+            try {
+                this.online_users = (List<Map.Entry<String,Integer>>) file.readObject();
+            } catch (IOException | ClassNotFoundException e) {
+                System.out.println("Problem loading online_users");
+            }
+
+            try {
+                file.closeRead();
+            } catch (IOException e) {
+                System.out.println("Problem closing users online_file(READ MODE)");
+            }
+        } catch (IOException e) {
+            System.out.println("Problem opening online_users file(READ MODE)(No online_users found)");
+        }
+    }
+
+    public void loadNotifications(){
+        ObjectFile file = new ObjectFile();
+        try {
+            file.openRead("notifications");
+
+            try {
+                this.notifications = (List<Map.Entry<String,String>>) file.readObject();
+            } catch (IOException | ClassNotFoundException e) {
+                System.out.println("Problem loading notifications");
+            }
+
+            try {
+                file.closeRead();
+            } catch (IOException e) {
+                System.out.println("Problem closing notifications file(READ MODE)");
+            }
+        } catch (IOException e) {
+            System.out.println("Problem opening notifications file(READ MODE)(No notifications found)");
+        }
 
     }
 
@@ -437,6 +510,8 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
             r.rebind("iBei", rmiServer);
             rmiServer.loadAuctions();
             rmiServer.loadUsers();
+            rmiServer.loadOnlineUsers();
+            rmiServer.loadNotifications();
 
             // Thread para acabar com leilões à hora certa
             new Thread() {

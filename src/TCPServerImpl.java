@@ -24,6 +24,7 @@ public class TCPServerImpl extends java.rmi.server.UnicastRemoteObject implement
     void rmiConnection(){
         try {
             this.RMI = (RMIServer) LocateRegistry.getRegistry(7000).lookup("iBei");
+            this.RMI.addTCPServer((TCPServer)this,this.port);
         } catch (RemoteException | NotBoundException e1) {
             rmiConnection();
         }
@@ -41,7 +42,6 @@ public class TCPServerImpl extends java.rmi.server.UnicastRemoteObject implement
         try {
             TCPServerImpl tcp = new TCPServerImpl(serverPort);
             tcp.rmiConnection();
-            tcp.RMI.addTCPServer((TCPServer)tcp,tcp.port);
             int number=0;
             try {
                 System.out.println("Listening on port " + serverPort);
@@ -449,7 +449,7 @@ class Connection extends Thread {
                 e1.printStackTrace();
             }
             tcp.rmiConnection();
-            edit_auction(parsedInput);
+            message(parsedInput);
         }
     }
 
