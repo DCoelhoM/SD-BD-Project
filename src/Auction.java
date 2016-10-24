@@ -7,16 +7,16 @@ public class Auction implements Serializable {
     private int id;
     //private String uniqueID;
     private String owner; //Owner username
-    private long code; //Product EAN/ISBN code
+    private String code; //Product EAN/ISBN code
     private String title; //title
     private String description;
     private Date deadline;
-    private int amount;
-    private List<Map.Entry<String,Integer>> bids;
+    private double amount;
+    private List<Map.Entry<String,Double>> bids;
     private List<Map.Entry<String,String>> messages;
     private List<String> previous_auction_data; // Arraylist that saves the edited auctions for each auction
 
-    public Auction(String mail, long code, String title, String description, Date deadline, int amount) {
+    public Auction(String mail, String code, String title, String description, Date deadline, double amount) {
         this.state = "active";
         //this.uniqueID = UUID.randomUUID().toString();
         //ID
@@ -44,7 +44,7 @@ public class Auction implements Serializable {
         this.description = description;
         this.deadline = deadline;
         this.amount = amount;
-        this.bids = Collections.synchronizedList(new ArrayList<Map.Entry<String, Integer>>());
+        this.bids = Collections.synchronizedList(new ArrayList<Map.Entry<String, Double>>());
         this.messages = Collections.synchronizedList(new ArrayList<Map.Entry<String, String>>());
         this.previous_auction_data = Collections.synchronizedList(new ArrayList<String>());
 
@@ -59,7 +59,7 @@ public class Auction implements Serializable {
     }
 
     public boolean checkUserBidActivity(String username){
-        for (Map.Entry<String,Integer> b : bids){
+        for (Map.Entry<String,Double> b : bids){
             if (b.getKey().equals(username)){
                 return true;
             }
@@ -76,11 +76,22 @@ public class Auction implements Serializable {
         return false;
     }
 
-    public boolean addBid(String username, int value){
-        if (!username.equals(this.owner)) {
+    public String getUsernameLastBid(){
+        if (this.getNumberBids() > 0){
+            return bids.get(bids.size() - 1).getKey();
+        }
+        return "";
+    }
+
+    public int getNumberBids(){
+        return bids.size();
+    }
+
+    public boolean addBid(String username, double value){
+        //if (!username.equals(this.owner)) {
             if (value>0 && value<amount) {
                 if (bids.size() > 0) {
-                    int last_bid = bids.get(bids.size() - 1).getValue();
+                    double last_bid = bids.get(bids.size() - 1).getValue();
                     if (value < last_bid) {
                         bids.add(new AbstractMap.SimpleEntry<>(username, value));
                         return true;
@@ -90,14 +101,14 @@ public class Auction implements Serializable {
                     return true;
                 }
             }
-        }
+        //}
         return false;
     }
 
     public void removeUserBids(String username){
         int n_bids = bids.size();
         if(n_bids>0) {
-            int amount = 0;
+            double amount = 0;
             int index_first_occur = 0;
             for (int i = 0; i < n_bids; i++) {
                 if (bids.get(i).getKey().equals(username)) {
@@ -150,7 +161,7 @@ public class Auction implements Serializable {
         return owner;
     }
 
-    public long getCode(){
+    public String getCode(){
         return code;
     }
 
@@ -170,11 +181,11 @@ public class Auction implements Serializable {
         return description;
     }
 
-    public int getAmount() {
+    public double getAmount() {
         return amount;
     }
 
-    public void setCode(long code) {
+    public void setCode(String code) {
         this.code = code;
     }
 
@@ -195,7 +206,7 @@ public class Auction implements Serializable {
         this.deadline = deadline;
     }
 
-    public void setAmount(int amount) {
+    public void setAmount(double amount) {
         this.amount = amount;
     }
 
@@ -208,7 +219,7 @@ public class Auction implements Serializable {
         int msg_count = messages.size();
         int bids_count = bids.size();
 
-        String aux_details = "title: " + title + ", description: " + description + ", deadline: " + deadline.toString() + ", messages_count: " + String.valueOf(msg_count);
+        String aux_details = "code: "+ code + ", title: " + title + ", description: " + description + ", deadline: " + deadline.toString() + ", messages_count: " + String.valueOf(msg_count);
 
         int i=0;
         for (Map.Entry<String,String> m : messages){
@@ -221,7 +232,7 @@ public class Auction implements Serializable {
         aux_details+= ", bids_count: " + String.valueOf(bids_count);
 
         int j=0;
-        for (Map.Entry<String,Integer> b : bids){
+        for (Map.Entry<String,Double> b : bids){
             String user = ", bids_" + String.valueOf(j) + "_user: " + b.getKey();
             String amount = ", bids_" + String.valueOf(j) + "_amount: " + String.valueOf(b.getValue());
             aux_details += user + amount;
@@ -229,59 +240,6 @@ public class Auction implements Serializable {
         }
 
         return aux_details;
-    }
-
-    public static void main(String args[]){
-        ArrayList<Auction> auctions = new ArrayList<>();
-        Auction teste = new Auction("DINIS", 123456,"LALALA","LEILAO TESTE",new Date(),1000);
-        teste.addBid("jorge",100);
-        teste.addBid("jorge",90);
-        teste.addBid("pinho",80);
-        teste.addBid("jorge",70);
-        teste.removeUserBids("jorge");
-        Auction teste1 = new Auction("DINIS", 1234567,"LALALA1","LEILAO TESTE",new Date(),10);
-        Auction teste2 = new Auction("DINIS", 12345678,"LALALA2","LEILAO TESTE",new Date(),10);
-        auctions.add(teste);
-        auctions.add(teste1);
-        auctions.add(teste2);
-        System.out.println(auctions);
-        ObjectFile file = new ObjectFile();
-        try {
-            file.openWrite("auctions");
-        } catch (IOException e) {
-            System.out.println("PROBLEMS");
-        }
-        try {
-            file.writeObject(auctions);
-        } catch (IOException e) {
-            System.out.println("PROBLEMS2");
-        }
-        try {
-            file.closeWrite();
-        } catch (IOException e) {
-            System.out.println("PROBLEMS3");
-        }
-
-        ArrayList<Auction> new_auctions = new ArrayList<>();
-        try {
-            file.openRead("auctions");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        try {
-            new_auctions= (ArrayList<Auction>) file.readObject();
-        } catch (IOException | ClassNotFoundException e) {
-            e.printStackTrace();
-        }
-
-        try {
-            file.closeRead();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        System.out.println(new_auctions);
-
     }
 }
 

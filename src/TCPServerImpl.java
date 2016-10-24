@@ -1,6 +1,3 @@
-import sun.awt.image.ImageWatched;
-
-import java.lang.reflect.Array;
 import java.net.*;
 import java.io.*;
 import java.rmi.NotBoundException;
@@ -145,7 +142,7 @@ class Connection extends Thread {
 
         // TODO: ter a certeza que sub string 1 e 2 vem separadas por espaço : espaço, senão parte. verificar no script de python
         for (String field : aux) {
-            String[] split = field.split(": ");
+            String[] split = field.split(":");
             String firstSubString = split[0].trim();
             String secondSubString = split[1].trim();
             parsedInput.put(firstSubString, secondSubString);
@@ -213,6 +210,7 @@ class Connection extends Thread {
                 System.out.println(tcp.port);
                 out.println("type : login , ok : true");
                 tcp.notes.addConnectedUser(username,out);
+                tcp.RMI.sendNotification();
                 this.username = username;
             } else {
                 out.println("type : login , ok : false");
@@ -268,15 +266,15 @@ class Connection extends Thread {
     // type : create_auction , code : 9780451524935, title : 1984 , description : big brother is watching you , deadline : 2016-10-24 15:16 , amount : 10
     //String owner, int code, String title, String description, Date deadline, int amount
     private void create_auction(LinkedHashMap<String, String> parsedInput){
-        long code;
-        int amount;
+        String code;
+        double amount;
         String title, description, date;
         Date deadline = null;
 
-        SimpleDateFormat formattedDate = new SimpleDateFormat ("yyyy-MM-dd HH:mm");
+        SimpleDateFormat formattedDate = new SimpleDateFormat ("yyyy-MM-dd HH-mm");
 
-        code = Long.parseLong(parsedInput.get("code"));
-        amount = Integer.parseInt(parsedInput.get("amount"));
+        code = parsedInput.get("code");
+        amount = Double.parseDouble(parsedInput.get("amount"));
         title = parsedInput.get("title");
         description = parsedInput.get("description");
         date = parsedInput.get("deadline");
@@ -307,21 +305,19 @@ class Connection extends Thread {
 
     // type : search_auction , code : 9780451524935
     private void search_auction(LinkedHashMap<String, String> parsedInput){
-        long code;
-        code = Long.parseLong(parsedInput.get("code"));
+        String code;
+        code = parsedInput.get("code");
 
         try {
             ArrayList<Auction> a_list = tcp.RMI.search_auction(code);
             String auctions_found = "";
             int count=0;
             for (Auction a:a_list){
-                if (a.getCode()==code){
-                    String id_aux = ", items_" + String.valueOf(count) + "_id: " + String.valueOf(a.getID());
-                    String code_aux = ", items_" + String.valueOf(count) + "_code: " + String.valueOf(a.getCode());
-                    String title_aux = ", items_" + String.valueOf(count) + "_title: " + String.valueOf(a.getTitle());
-                    auctions_found += id_aux + code_aux + title_aux;
-                    count++;
-                }
+                String id_aux = ", items_" + String.valueOf(count) + "_id: " + String.valueOf(a.getID());
+                String code_aux = ", items_" + String.valueOf(count) + "_code: " + String.valueOf(a.getCode());
+                String title_aux = ", items_" + String.valueOf(count) + "_title: " + String.valueOf(a.getTitle());
+                auctions_found += id_aux + code_aux + title_aux;
+                count++;
             }
             out.println("type: search_auction , items_count: "+String.valueOf(count)+auctions_found);
         } catch (RemoteException e) {
@@ -364,7 +360,16 @@ class Connection extends Thread {
 
         try {
             user_auctions = tcp.RMI.my_auctions(this.username);
-            out.println(user_auctions);
+            String auctions_found = "";
+            int count=0;
+            for (Auction a:user_auctions){
+                String id_aux = ", items_" + String.valueOf(count) + "_id: " + String.valueOf(a.getID());
+                String code_aux = ", items_" + String.valueOf(count) + "_code: " + String.valueOf(a.getCode());
+                String title_aux = ", items_" + String.valueOf(count) + "_title: " + String.valueOf(a.getTitle());
+                auctions_found += id_aux + code_aux + title_aux;
+                count++;
+            }
+            out.println("type: my_auctions , items_count: "+String.valueOf(count)+auctions_found);
         } catch (RemoteException e) {
             try {
                 System.out.println("Connection with problems...");
@@ -380,11 +385,12 @@ class Connection extends Thread {
     // type : bid , id : 101, amount : 9
     private void bid(LinkedHashMap<String, String> parsedInput){
         int id = Integer.parseInt(parsedInput.get("id"));
-        int amount = Integer.parseInt(parsedInput.get("amount"));
+        double amount = Double.parseDouble(parsedInput.get("amount"));
 
         try {
             if(tcp.RMI.bid(id,this.username, amount)){
                 out.println("type : bid , ok : true");
+                tcp.RMI.sendNotification();
             } else {
                 out.println("type : bid , ok : false");
             }
@@ -431,6 +437,7 @@ class Connection extends Thread {
         try {
             if(tcp.RMI.message(auction_id, this.username, message)){
                 out.println("type : message , ok : true");
+                tcp.RMI.sendNotification();
             } else {
                 out.println("type : message , ok : false");
             }
@@ -448,13 +455,14 @@ class Connection extends Thread {
 
     private void online_users(){
 
-        ArrayList<String> users_online = new ArrayList<>();
+        ArrayList<String> users_online;
+
         try {
             users_online = tcp.RMI.online_users();
             int users_count = users_online.size();
             int i = 0;
 
-            String response = "type : online_users , users_ count : " + users_count;
+            String response = "type : online_users , users_count : " + users_count;
 
             for(String user : users_online){
                 response += " , users_" + i + "_username : " + user;
@@ -479,11 +487,12 @@ class Notification{
     private Map<String,PrintWriter> connected_users; //{Username, Out}
 
     public Notification() {
-        this.connected_users = Collections.synchronizedMap(new LinkedHashMap<String, PrintWriter>());;
+        this.connected_users = Collections.synchronizedMap(new LinkedHashMap<String, PrintWriter>());
     }
 
     public void sendNotification(String username, String msg) {
         connected_users.get(username).println(msg);
+        System.out.println("MANDOU A PUTA DA NOTIFCACAO! para o cabrao do "+ username + " " + msg);
     }
 
     public void addConnectedUser(String username, PrintWriter out){

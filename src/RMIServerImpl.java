@@ -14,7 +14,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     private List<User> users;
     private List<Map.Entry<String,Integer>> online_users; //{Username, TCP_Port}
     private List<Map.Entry<Integer,TCPServer>> connected_TCPs; //{TCP_Port, TCPServer} TODO Se forem maquinas diferentes tem que receber o host tambem
-    private List<Map.Entry<String,Integer>> notifications; //{Username, Auction_ID}
+    private List<Map.Entry<String,String>> notifications; //{Username, Message}
 
 
     public RMIServerImpl() throws java.rmi.RemoteException{
@@ -100,16 +100,11 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
 
     @Override
     public boolean logout(String username) throws RemoteException {
-        if(removeOnlineUser(username)){
-            System.out.println("removi bem um user!");
-            return true;
-        }
-        return false;
+        return removeOnlineUser(username);
     }
 
 
     private boolean removeOnlineUser(String username) throws RemoteException {
-
         for (Map.Entry<String, Integer> u : online_users) {
             if (u.getKey().equals(username)) {
                 online_users.remove(u);
@@ -121,7 +116,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
 
 
     @Override
-    public boolean create_auction(String owner, long code, String title, String description, Date deadline, int amount) throws RemoteException {
+    public boolean create_auction(String owner, String code, String title, String description, Date deadline, double amount) throws RemoteException {
         //TODO DEADLINE > ACTUAL DATE
         //TODO EMPTY ARGS
         Auction new_auc = new Auction(owner, code, title, description, deadline, amount);
@@ -131,10 +126,10 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     }
 
     @Override
-    public ArrayList<Auction> search_auction(long code) throws RemoteException {
+    public ArrayList<Auction> search_auction(String code) throws RemoteException {
         ArrayList<Auction> auctions_found = new ArrayList<>();
         for (Auction a:auctions){
-            if (a.getCode()==code){
+            if (a.getCode().equals(code)){
                 auctions_found.add(a);
             }
         }
@@ -163,14 +158,18 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     }
 
     @Override
-    public boolean bid(int id, String username, int amount) throws RemoteException {
+    public boolean bid(int id, String username, double amount) throws RemoteException {
         for (Auction a:auctions){
-            if(a.getState().equals("active")){
-                if (a.getID()==id){
-                    if(a.addBid(username,amount)) {
-                        saveAuctions();
-                        return true;
+            if(a.getID()==id && a.getState().equals("active")){
+                String usertonotify = a.getUsernameLastBid();
+                int nbids = a.getNumberBids();
+                if(a.addBid(username,amount)) {
+                    if (nbids>0) {
+                        String note = "type: notification_bid, id: " + id + ", user: " + username + ", amount: " + amount;
+                        notifications.add(new AbstractMap.SimpleEntry<>(usertonotify, note));
                     }
+                    saveAuctions();
+                    return true;
                 }
             }
         }
@@ -183,7 +182,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
             if (a.getID()==id && a.getOwner().equals(username)){
                 a.setPrevious_auction_data("title: " + a.getTitle() + ", code: " + a.getCode() + ", description: " + a.getDescription() + ", deadline: " + a.getDeadline() + ", amount: " + a.getAmount());
                 if (data.containsKey("code")){
-                    a.setCode(Long.parseLong(data.get("code")));
+                    a.setCode(data.get("code"));
                 }
                 if (data.containsKey("title")){
                     a.setTitle(data.get("title"));
@@ -200,7 +199,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
                     }
                 }
                 if (data.containsKey("amount")){
-                   a.setAmount(Integer.parseInt(data.get("amount")));
+                   a.setAmount(Double.parseDouble(data.get("amount")));
                 }
                 saveAuctions();
                 return true;
@@ -230,29 +229,29 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         }
         return null;
     }
-    private void sendNotification(){
-        //type: notification, auction_id: id
-        for (Map.Entry<String,Integer> n:notifications){
+    @Override
+    public void sendNotification(){
+        List<Map.Entry<String,String>> notes_to_delete = Collections.synchronizedList(new ArrayList<>());
+        for (Map.Entry<String,String> n:notifications){
             System.out.println(n.getKey());
             System.out.println(n.getValue());
             int port = checkIfUserOnline(n.getKey());
-            System.out.println("MAIS UM SOUT");
             if(port!=-1){
-                System.out.println("NAOSEI");
                 TCPServer tcp = getTCPbyPort(port);
-                System.out.println("YOLO");
                 if (tcp!=null){
-                    System.out.println("CHEGOU AQUI2!!!!");
-                    String msg = "type: notification, auction_id: " + String.valueOf(n.getValue());
                     try {
-                        tcp.sendNotification(n.getKey(),msg);
+                        tcp.sendNotification(n.getKey(),n.getValue());
+                        notes_to_delete.add(n);
+                        System.out.println("A TUA MAE È QUE È BOA!!!!");
                     } catch (RemoteException e) {
                         System.out.println("TCP PARTIDO");
                     }
                 }
             }
         }
-
+        for (Map.Entry<String,String> n:notes_to_delete){
+            notifications.remove(n);
+        }
 
     }
 
@@ -261,12 +260,12 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         for (Auction a:auctions){
             if (a.getID()==auction_id){
                 a.addMsg(username,msg);
+                String note =  "type: notification_message, id: "+ auction_id +", user: " + username + ", text: " + msg;
                 ArrayList<String> users_to_notify = a.getParticipants();
                 for(String u:users_to_notify){
-                    System.out.println("CHEGOU AQUI!!!!");
-                    notifications.add(new AbstractMap.SimpleEntry<>(u, auction_id));
+                    notifications.add(new AbstractMap.SimpleEntry<>(u, note));
                 }
-                sendNotification();
+                //sendNotification();
                 saveAuctions();
                 return true;
             }
@@ -441,7 +440,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
                         System.out.println("Chamei o end auctions");
                         rmiServer.end_auctions();
                         try {
-                            Thread.sleep(60000);
+                            Thread.sleep(40000);
                         } catch (InterruptedException e) {
                             System.out.println("Problem with end auctions thread!");
                         }
