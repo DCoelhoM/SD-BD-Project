@@ -1,4 +1,5 @@
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -99,8 +100,10 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
 
     @Override
     public boolean logout(String username) throws RemoteException {
-        if(removeOnlineUser(username))
+        if(removeOnlineUser(username)){
+            System.out.println("removi bem um user!");
             return true;
+        }
         return false;
     }
 
@@ -273,7 +276,12 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
 
     @Override
     public ArrayList<String> online_users() throws RemoteException {
-        return null;
+
+        ArrayList<String> users_online = new ArrayList<>();
+        for (Map.Entry<String,Integer> online_user:online_users){
+            users_online.add(online_user.getKey());
+        }
+        return users_online;
     }
 
     public void end_auctions(){

@@ -1,5 +1,6 @@
 import sun.awt.image.ImageWatched;
 
+import java.lang.reflect.Array;
 import java.net.*;
 import java.io.*;
 import java.rmi.NotBoundException;
@@ -114,19 +115,25 @@ class Connection extends Thread {
         }catch(IOException e){System.out.println("Connection:" + e.getMessage());}
     }
     //=============================
-    public void run(){
+    public void run() {
         String resposta;
-        try{
-            while(true){
+        try {
+            while (true) {
                 //an echo server
                 String data = in.readLine();
-                System.out.println("T["+thread_number + "] Recebeu: "+data);
+                System.out.println("T[" + thread_number + "] Recebeu: " + data);
                 parseUserInput(data);
-                //resposta=String.valueOf(RMI.register("Dinis","dinis","dinis"));
-                //out.println(resposta);
             }
-        }catch(EOFException e){System.out.println("EOF:" + e);
-        }catch(IOException e){System.out.println("IO:" + e);}
+        } catch (EOFException e) {
+            System.out.println("EOF:" + e);
+
+        } catch (IOException e) {
+            System.out.println("IO:" + e);
+        } catch (NullPointerException e) {
+            System.out.println("piças");
+            System.out.println(this.username);
+            logout();
+        }
     }
 
     private void parseUserInput(String data){
@@ -138,7 +145,7 @@ class Connection extends Thread {
 
         // TODO: ter a certeza que sub string 1 e 2 vem separadas por espaço : espaço, senão parte. verificar no script de python
         for (String field : aux) {
-            String[] split = field.split(" : ");
+            String[] split = field.split(": ");
             String firstSubString = split[0].trim();
             String secondSubString = split[1].trim();
             parsedInput.put(firstSubString, secondSubString);
@@ -161,7 +168,7 @@ class Connection extends Thread {
                 login(parsedInput);
                 break;
             case "logout":
-                logout(parsedInput);
+                logout();
                 break;
             case "register":
                 register(parsedInput);
@@ -188,7 +195,7 @@ class Connection extends Thread {
                 message(parsedInput);
                 break;
             case "online_users":
-                System.out.println("123");
+                online_users();
                 break;
             default:
                 break;
@@ -222,7 +229,7 @@ class Connection extends Thread {
         }
     }
 
-    private void logout(LinkedHashMap<String, String> parsedInput){
+    private void logout(){
         try {
             if(tcp.RMI.logout(this.username)) {
                 out.println("type : logout, ok : true");
@@ -436,6 +443,33 @@ class Connection extends Thread {
             }
             tcp.rmiConnection();
             edit_auction(parsedInput);
+        }
+    }
+
+    private void online_users(){
+
+        ArrayList<String> users_online = new ArrayList<>();
+        try {
+            users_online = tcp.RMI.online_users();
+            int users_count = users_online.size();
+            int i = 0;
+
+            String response = "type : online_users , users_ count : " + users_count;
+
+            for(String user : users_online){
+                response += " , users_" + i + "_username : " + user;
+                i++;
+            }
+            out.println(response);
+        } catch (RemoteException e) {
+            try {
+                System.out.println("Connection with problems...");
+                Thread.sleep(5000);
+            } catch (InterruptedException e1) {
+                e1.printStackTrace();
+            }
+            tcp.rmiConnection();
+            online_users();
         }
 
     }
