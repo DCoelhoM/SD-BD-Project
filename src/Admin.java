@@ -97,6 +97,12 @@ public class Admin {
             case "test":
                 test();
                 break;
+            case "statistics":
+                statistics();
+                break;
+            case "magia":
+                magia();
+                break;
             default:
                 break;
         }
@@ -130,7 +136,85 @@ public class Admin {
         }
     }
 
-    //  Este teste deverá, no mínimo, um leilão, licitar nesse leilão, consultar os detalhes desse leilão e verificar se o resultado está correcto
+    private void statistics(){
+        System.out.println("estatísticas");
+
+        try {
+            this.RMI.statistics();
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void magia(){
+        PrintWriter outToServer = null;
+        BufferedReader inFromServer = null;
+
+        // create streams for writing to and reading from the socket
+        try {
+            inFromServer = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            outToServer = new PrintWriter(socket.getOutputStream(), true);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        String REGISTER = "type : register , username : test1, password : test1";
+        outToServer.println(REGISTER);
+
+        String SUCCESSFUL_REGISTER = "type : register , ok : true";
+        try {
+            if(inFromServer.readLine().contentEquals(SUCCESSFUL_REGISTER)){
+                System.out.println("Register Working Fine!");
+            } else {
+                System.out.println("Wrong Answer From register");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        REGISTER = "type : register , username : test2, password : test2";
+        outToServer.println(REGISTER);
+
+        SUCCESSFUL_REGISTER = "type : register , ok : true";
+        try {
+            if(inFromServer.readLine().contentEquals(SUCCESSFUL_REGISTER)){
+                System.out.println("Register Working Fine!");
+            } else {
+                System.out.println("Wrong Answer From register");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        REGISTER = "type : register , username : test3, password : test3";
+        outToServer.println(REGISTER);
+
+        SUCCESSFUL_REGISTER = "type : register , ok : true";
+        try {
+            if(inFromServer.readLine().contentEquals(SUCCESSFUL_REGISTER)){
+                System.out.println("Register Working Fine!");
+            } else {
+                System.out.println("Wrong Answer From register");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        REGISTER = "type : register , username : test4, password : test4";
+        outToServer.println(REGISTER);
+
+        SUCCESSFUL_REGISTER = "type : register , ok : true";
+        try {
+            if(inFromServer.readLine().contentEquals(SUCCESSFUL_REGISTER)){
+                System.out.println("Register Working Fine!");
+            } else {
+                System.out.println("Wrong Answer From register");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
     private static void test(){
 
