@@ -1,6 +1,7 @@
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Map;
 
 interface RMIServer extends java.rmi.Remote {
 
@@ -29,7 +30,8 @@ interface RMIServer extends java.rmi.Remote {
     //ADMIN
     boolean cancel_auction(int id) throws java.rmi.RemoteException;
     boolean ban_user(String username) throws java.rmi.RemoteException;
-    void statistics() throws java.rmi.RemoteException;
+    Map mostAuctionsUsers() throws java.rmi.RemoteException;
+    Map userWithMostAuctionsWon() throws java.rmi.RemoteException;
     String ping() throws  java.rmi.RemoteException;
 
 }

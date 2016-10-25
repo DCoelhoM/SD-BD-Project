@@ -331,8 +331,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     }
 
     @Override
-    public void statistics() throws RemoteException {
-
+    public Map mostAuctionsUsers() throws RemoteException {
 
         HashMap<String, Integer> usersAuctions = new HashMap<>();
 
@@ -345,12 +344,51 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
             }
         }
 
-        List values = new ArrayList(usersAuctions.values());
-        //Collections.sort(values);
-        Collections.sort(values, Collections.reverseOrder());
-        System.out.println(values);
-
+        Map<Integer, String> map = sortByValues(usersAuctions);
+        return map;
     }
+
+    @Override
+    public Map userWithMostAuctionsWon() throws RemoteException {
+
+        HashMap<String, Integer> usersAuctions = new HashMap<>();
+
+        for(Auction a:auctions){
+            // if user is already in the hashmap, +=1 the number of auctions created
+            if(a.getState().equals("ended")){
+                if(usersAuctions.containsKey(a.getUsernameLastBid())) {
+                    usersAuctions.put(a.getUsernameLastBid(), usersAuctions.get(a.getUsernameLastBid()) + 1);
+                } else {
+                    usersAuctions.put(a.getUsernameLastBid(), 1);
+                }
+            }
+        }
+
+        Map<Integer, String> map = sortByValues(usersAuctions);
+        return map;
+    }
+
+    private static HashMap sortByValues(HashMap map) {
+        List list = new LinkedList(map.entrySet());
+        // Defined Custom Comparator here
+        Collections.sort(list, new Comparator() {
+            public int compare(Object o1, Object o2) {
+                return ((Comparable) ((Map.Entry) (o2)).getValue())
+                        .compareTo(((Map.Entry) (o1)).getValue());
+            }
+        });
+
+        // Here I am copying the sorted list in HashMap
+        // using LinkedHashMap to preserve the insertion order
+        HashMap sortedHashMap = new LinkedHashMap();
+        for (Iterator it = list.iterator(); it.hasNext();) {
+            Map.Entry entry = (Map.Entry) it.next();
+            sortedHashMap.put(entry.getKey(), entry.getValue());
+        }
+        return sortedHashMap;
+    }
+
+
 
     @Override
     public String ping() throws RemoteException {

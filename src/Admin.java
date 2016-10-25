@@ -3,8 +3,7 @@ import java.net.*;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
-import java.util.LinkedHashMap;
-import java.util.Scanner;
+import java.util.*;
 
 public class Admin {
 
@@ -136,11 +135,38 @@ public class Admin {
         }
     }
 
-    private void statistics(){
+    private void statistics() {
         System.out.println("estatísticas");
+        Map<Integer, String> map;
 
         try {
-            this.RMI.statistics();
+            map = this.RMI.mostAuctionsUsers();
+            System.out.println("Users with most auctions:");
+            Set set2 = map.entrySet();
+            Iterator iterator2 = set2.iterator();
+            int i = 0;
+            while (iterator2.hasNext() && i < 10) {
+                Map.Entry me2 = (Map.Entry) iterator2.next();
+                System.out.print(me2.getKey() + ": ");
+                System.out.println(me2.getValue());
+                i++;
+            }
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
+
+        try {
+            map = this.RMI.userWithMostAuctionsWon();
+            System.out.println("Users with most won auctions:");
+            Set set2 = map.entrySet();
+            Iterator iterator2 = set2.iterator();
+            int i = 0;
+            while(iterator2.hasNext() && i < 10) {
+                Map.Entry me2 = (Map.Entry)iterator2.next();
+                System.out.print(me2.getKey() + ": ");
+                System.out.println(me2.getValue());
+                i++;
+            }
         } catch (RemoteException e) {
             e.printStackTrace();
         }
@@ -202,6 +228,123 @@ public class Admin {
         }
 
         REGISTER = "type : register , username : test4, password : test4";
+        outToServer.println(REGISTER);
+
+        SUCCESSFUL_REGISTER = "type : register , ok : true";
+        try {
+            if(inFromServer.readLine().contentEquals(SUCCESSFUL_REGISTER)){
+                System.out.println("Register Working Fine!");
+            } else {
+                System.out.println("Wrong Answer From register");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        REGISTER = "type : register , username : test5, password : test4";
+        outToServer.println(REGISTER);
+
+        SUCCESSFUL_REGISTER = "type : register , ok : true";
+        try {
+            if(inFromServer.readLine().contentEquals(SUCCESSFUL_REGISTER)){
+                System.out.println("Register Working Fine!");
+            } else {
+                System.out.println("Wrong Answer From register");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        REGISTER = "type : register , username : test6, password : test4";
+        outToServer.println(REGISTER);
+
+        SUCCESSFUL_REGISTER = "type : register , ok : true";
+        try {
+            if(inFromServer.readLine().contentEquals(SUCCESSFUL_REGISTER)){
+                System.out.println("Register Working Fine!");
+            } else {
+                System.out.println("Wrong Answer From register");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        REGISTER = "type : register , username : test7, password : test4";
+        outToServer.println(REGISTER);
+
+        SUCCESSFUL_REGISTER = "type : register , ok : true";
+        try {
+            if(inFromServer.readLine().contentEquals(SUCCESSFUL_REGISTER)){
+                System.out.println("Register Working Fine!");
+            } else {
+                System.out.println("Wrong Answer From register");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        REGISTER = "type : register , username : test8, password : test4";
+        outToServer.println(REGISTER);
+
+        SUCCESSFUL_REGISTER = "type : register , ok : true";
+        try {
+            if(inFromServer.readLine().contentEquals(SUCCESSFUL_REGISTER)){
+                System.out.println("Register Working Fine!");
+            } else {
+                System.out.println("Wrong Answer From register");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        REGISTER = "type : register , username : test9, password : test4";
+        outToServer.println(REGISTER);
+
+        SUCCESSFUL_REGISTER = "type : register , ok : true";
+        try {
+            if(inFromServer.readLine().contentEquals(SUCCESSFUL_REGISTER)){
+                System.out.println("Register Working Fine!");
+            } else {
+                System.out.println("Wrong Answer From register");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        REGISTER = "type : register , username : test10, password : test4";
+        outToServer.println(REGISTER);
+
+        SUCCESSFUL_REGISTER = "type : register , ok : true";
+        try {
+            if(inFromServer.readLine().contentEquals(SUCCESSFUL_REGISTER)){
+                System.out.println("Register Working Fine!");
+            } else {
+                System.out.println("Wrong Answer From register");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        REGISTER = "type : register , username : test11, password : test4";
+        outToServer.println(REGISTER);
+
+        SUCCESSFUL_REGISTER = "type : register , ok : true";
+        try {
+            if(inFromServer.readLine().contentEquals(SUCCESSFUL_REGISTER)){
+                System.out.println("Register Working Fine!");
+            } else {
+                System.out.println("Wrong Answer From register");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        REGISTER = "type : register , username : test12, password : test4";
+        outToServer.println(REGISTER);
+
+        SUCCESSFUL_REGISTER = "type : register , ok : true";
+        try {
+            if(inFromServer.readLine().contentEquals(SUCCESSFUL_REGISTER)){
+                System.out.println("Register Working Fine!");
+            } else {
+                System.out.println("Wrong Answer From register");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        REGISTER = "type : register , username : test13, password : test4";
         outToServer.println(REGISTER);
 
         SUCCESSFUL_REGISTER = "type : register , ok : true";

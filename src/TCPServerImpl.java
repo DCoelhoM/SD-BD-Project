@@ -309,7 +309,9 @@ class Connection extends Thread {
         }
     }
 
-    // type : create_auction , code : 9780451524934, title : 1984 , description : big brother is watching you , deadline : 2017-10-24 15-16 , amount : 10
+    // type : create_auction , code : 9780451524934, title : 1984 , description : big brother is watching you , deadline : 2016-10-25 23-33 , amount : 10
+
+    // type : create_auction , code : 123456789, title : 1984 , description : big brother is watching you , deadline : 2016-10-26 00-10 , amount : 10
     //String owner, int code, String title, String description, Date deadline, int amount
     private void create_auction(LinkedHashMap<String, String> parsedInput){
         String code;
