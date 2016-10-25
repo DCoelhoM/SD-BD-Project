@@ -10,10 +10,21 @@ import java.util.*;
 public class TCPServerImpl extends java.rmi.server.UnicastRemoteObject implements TCPServer{
     RMIServer RMI = null;
     Notification notes = null;
+    String host;
     int port;
-    public TCPServerImpl(int port)  throws java.rmi.RemoteException{
+    String host_port;
+    String primary_rmi_host, backup_rmi_host;
+    int p_rmi_port, b_rmi_port;
+
+    public TCPServerImpl(String host, int port, String p_host, String b_host, int p_port, int b_port)  throws java.rmi.RemoteException{
         super();
+        this.host = host;
         this.port = port;
+        this.host_port = this.host+":"+String.valueOf(this.port);
+        this.primary_rmi_host = p_host;
+        this.p_rmi_port = p_port;
+        this.backup_rmi_host = b_host;
+        this.b_rmi_port = b_port;
     }
 
     @Override
@@ -21,74 +32,81 @@ public class TCPServerImpl extends java.rmi.server.UnicastRemoteObject implement
         notes.sendNotification(username,msg);
     }
 
-    void rmiConnection(){
+    void rmiConnection(String p_host, String b_host, int p_port, int b_port){ //tenta o primario, se não funcionar, vai tentar o backup
         try {
-            this.RMI = (RMIServer) LocateRegistry.getRegistry(7000).lookup("iBei");
-            this.RMI.addTCPServer((TCPServer)this,this.port);
+            this.RMI = (RMIServer) LocateRegistry.getRegistry(p_host, p_port).lookup("iBei");
+            this.RMI.addTCPServer((TCPServer)this,this.host_port);
         } catch (RemoteException | NotBoundException e1) {
-            rmiConnection();
+            rmiConnection(b_host,p_host,b_port,p_port);
         }
     }
 
     public static void main(String args[]){
-        System.setProperty("java.net.preferIPv4Stack", "true");
-        int serverPort = 6000;
+        if(args.length==6) {
+            String tcp_host, primary_rmi_host, backup_rmi_host;
+            int tcp_port, p_rmi_port, b_rmi_port;
+            tcp_host = args[0];
+            tcp_port = Integer.parseInt(args[1]);
+            primary_rmi_host = args[2];
+            p_rmi_port = Integer.parseInt(args[3]);
+            backup_rmi_host = args[4];
+            b_rmi_port = Integer.parseInt(args[5]);
 
-        UDPSender udp;
 
-        if(args.length==1){
-            serverPort = Integer.parseInt(args[0]);
-        }
-        try {
-            TCPServerImpl tcp = new TCPServerImpl(serverPort);
-            tcp.rmiConnection();
-            int number=0;
+            System.setProperty("java.net.preferIPv4Stack", "true");
+
+            UDPSender udp;
             try {
-                System.out.println("Listening on port " + serverPort);
-                ServerSocket listenSocket = new ServerSocket(serverPort);
-                System.out.println("LISTEN SOCKET="+listenSocket);
-                tcp.notes = new Notification();
-                udp = new UDPSender(serverPort, tcp);
-                udp.udpMessager();
+                TCPServerImpl tcp = new TCPServerImpl(tcp_host, tcp_port, primary_rmi_host, backup_rmi_host, p_rmi_port, b_rmi_port);
+                tcp.rmiConnection(primary_rmi_host,backup_rmi_host,p_rmi_port,b_rmi_port);
+                int number = 0;
+                try {
+                    System.out.println("Listening on port " + tcp_port);
+                    ServerSocket listenSocket = new ServerSocket(tcp_port);
+                    System.out.println("LISTEN SOCKET=" + listenSocket);
+                    tcp.notes = new Notification();
+                    udp = new UDPSender(tcp);
+                    udp.udpMessager();
 
-                // MULTICAST - RECEBER MENSAGENS UDP
-                new Thread() {
-                    public void run() {
-                        MulticastSocket socket = null;
-                        try {
-                            socket = new MulticastSocket(5555); // 5555 é a PORTA
-                            socket.joinGroup(InetAddress.getByName("224.1.2.3")); // 224.1.2.3 É O ENDEREÇO DO GRUPO
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                        byte[] buf = new byte[1000];
-                        DatagramPacket message = new DatagramPacket(buf, buf.length);
-                        try {
-                            while (true) {
-                                System.out.println("á escuta de mensagem");
-                                socket.receive(message);
-                                System.out.println("Mensagem recebida");
-                                String parsedMessage = new String(message.getData(), 0, message.getLength());
-                                System.out.println(parsedMessage);
+                    // MULTICAST - RECEBER MENSAGENS UDP
+                    new Thread() {
+                        public void run() {
+                            MulticastSocket socket = null;
+                            try {
+                                socket = new MulticastSocket(5555); // 5555 é a PORTA
+                                socket.joinGroup(InetAddress.getByName("224.1.2.3")); // 224.1.2.3 É O ENDEREÇO DO GRUPO
+                            } catch (IOException e) {
+                                e.printStackTrace();
                             }
-                        } catch (IOException e) {
-                            e.printStackTrace();
+                            byte[] buf = new byte[1000];
+                            DatagramPacket message = new DatagramPacket(buf, buf.length);
+                            try {
+                                while (true) {
+                                    socket.receive(message);
+                                    String parsedMessage = new String(message.getData(), 0, message.getLength());
+                                    System.out.println(parsedMessage);
+                                }
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
                         }
+                    }.start();
+
+
+                    while (true) {
+                        Socket clientSocket = listenSocket.accept(); // BLOQUEANTE
+                        System.out.println("CLIENT_SOCKET (created at accept())=" + clientSocket);
+                        number++;
+                        new Connection(clientSocket, number, tcp);
                     }
-                }.start();
-
-
-                while(true) {
-                    Socket clientSocket = listenSocket.accept(); // BLOQUEANTE
-                    System.out.println("CLIENT_SOCKET (created at accept())="+clientSocket);
-                    number++;
-                    new Connection(clientSocket, number, tcp);
+                } catch (IOException e) {
+                    System.out.println("Listen:" + e.getMessage());
                 }
-            } catch(IOException e) {
-                System.out.println("Listen:" + e.getMessage());
+            } catch (Exception e) {
+                System.out.println("Exception in main: " + e);
             }
-        } catch (Exception e) {
-            System.out.println("Exception in main: " + e);
+        } else {
+            System.out.println("Usage: tcp_host tcp_port primary_rmi_host primary_rmi_ port backup_rmi_host backup_rmi_port");
         }
     }
 }
@@ -206,7 +224,7 @@ class Connection extends Thread {
         password = parsedInput.get("password");
         System.out.println(tcp.port);
         try {
-            if (tcp.RMI.login(username, password,tcp.port)) {
+            if (tcp.RMI.login(username, password,tcp.host_port)) {
                 System.out.println(tcp.port);
                 out.println("type : login , ok : true");
                 tcp.notes.addConnectedUser(username,out);
@@ -222,7 +240,7 @@ class Connection extends Thread {
             } catch (InterruptedException e1) {
                 e1.printStackTrace();
             }
-            tcp.rmiConnection();
+            tcp.rmiConnection(tcp.primary_rmi_host, tcp.backup_rmi_host, tcp.p_rmi_port, tcp.b_rmi_port);
             login(parsedInput);
         }
     }
@@ -258,7 +276,7 @@ class Connection extends Thread {
             } catch (InterruptedException e1) {
                 e1.printStackTrace();
             }
-            tcp.rmiConnection();
+            tcp.rmiConnection(tcp.primary_rmi_host, tcp.backup_rmi_host, tcp.p_rmi_port, tcp.b_rmi_port);
             register(parsedInput);
         }
     }
@@ -298,7 +316,7 @@ class Connection extends Thread {
             } catch (InterruptedException e1) {
                 e1.printStackTrace();
             }
-            tcp.rmiConnection();
+            tcp.rmiConnection(tcp.primary_rmi_host, tcp.backup_rmi_host, tcp.p_rmi_port, tcp.b_rmi_port);
             create_auction(parsedInput);
         }
     }
@@ -327,7 +345,7 @@ class Connection extends Thread {
             } catch (InterruptedException e1) {
                 e1.printStackTrace();
             }
-            tcp.rmiConnection();
+            tcp.rmiConnection(tcp.primary_rmi_host, tcp.backup_rmi_host, tcp.p_rmi_port, tcp.b_rmi_port);
             search_auction(parsedInput);
         }
     }
@@ -348,7 +366,7 @@ class Connection extends Thread {
             } catch (InterruptedException e1) {
                 e1.printStackTrace();
             }
-            tcp.rmiConnection();
+            tcp.rmiConnection(tcp.primary_rmi_host, tcp.backup_rmi_host, tcp.p_rmi_port, tcp.b_rmi_port);
             detail_auction(parsedInput);
         }
     }
@@ -376,7 +394,7 @@ class Connection extends Thread {
             } catch (InterruptedException e1) {
                 e1.printStackTrace();
             }
-            tcp.rmiConnection();
+            tcp.rmiConnection(tcp.primary_rmi_host, tcp.backup_rmi_host, tcp.p_rmi_port, tcp.b_rmi_port);
             my_auctions();
         }
     }
@@ -401,7 +419,7 @@ class Connection extends Thread {
             } catch (InterruptedException e1) {
                 e1.printStackTrace();
             }
-            tcp.rmiConnection();
+            tcp.rmiConnection(tcp.primary_rmi_host, tcp.backup_rmi_host, tcp.p_rmi_port, tcp.b_rmi_port);
             bid(parsedInput);
         }
     }
@@ -423,7 +441,7 @@ class Connection extends Thread {
             } catch (InterruptedException e1) {
                 e1.printStackTrace();
             }
-            tcp.rmiConnection();
+            tcp.rmiConnection(tcp.primary_rmi_host, tcp.backup_rmi_host, tcp.p_rmi_port, tcp.b_rmi_port);
             edit_auction(parsedInput);
         }
     }
@@ -448,7 +466,7 @@ class Connection extends Thread {
             } catch (InterruptedException e1) {
                 e1.printStackTrace();
             }
-            tcp.rmiConnection();
+            tcp.rmiConnection(tcp.primary_rmi_host, tcp.backup_rmi_host, tcp.p_rmi_port, tcp.b_rmi_port);
             message(parsedInput);
         }
     }
@@ -476,7 +494,7 @@ class Connection extends Thread {
             } catch (InterruptedException e1) {
                 e1.printStackTrace();
             }
-            tcp.rmiConnection();
+            tcp.rmiConnection(tcp.primary_rmi_host, tcp.backup_rmi_host, tcp.p_rmi_port, tcp.b_rmi_port);
             online_users();
         }
 
@@ -492,7 +510,6 @@ class Notification{
 
     public void sendNotification(String username, String msg) {
         connected_users.get(username).println(msg);
-        System.out.println("MANDOU A PUTA DA NOTIFCACAO! para o cabrao do "+ username + " " + msg);
     }
 
     public void addConnectedUser(String username, PrintWriter out){

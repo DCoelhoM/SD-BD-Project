@@ -6,11 +6,9 @@ import java.net.UnknownHostException;
 import java.rmi.RemoteException;
 
 public class UDPSender{
-    private static int serverPort;
     private TCPServerImpl tcp;
 
-    UDPSender(int serverPort, TCPServerImpl tcp){
-        UDPSender.serverPort = serverPort;
+    UDPSender(TCPServerImpl tcp){
         this.tcp = tcp;
     }
 
@@ -21,11 +19,10 @@ public class UDPSender{
                     while (true) {
                         int counter = 0;
                         try {
-                            counter = tcp.RMI.checkNumberUsers(UDPSender.serverPort);
-                            String msg = "Number of clients in port " + UDPSender.serverPort + "is: " + counter;
+                            counter = tcp.RMI.checkNumberUsers(tcp.host_port);
+                            String msg = "Number of clients in " + tcp.host_port + " is: " + counter;
                             InetAddress group = InetAddress.getByName("224.1.2.3");
-                            MulticastSocket s = new MulticastSocket(UDPSender.serverPort);
-                            System.out.println("o port é " + UDPSender.serverPort);
+                            MulticastSocket s = new MulticastSocket(tcp.port);
                             DatagramPacket hi = new DatagramPacket(msg.getBytes(), msg.length(), group, 5555);
                             s.send(hi);
                             sleep(5000);
@@ -36,7 +33,7 @@ public class UDPSender{
                             } catch (InterruptedException e1) {
                                 e1.printStackTrace();
                             }
-                            tcp.rmiConnection();
+                            tcp.rmiConnection(tcp.primary_rmi_host,tcp.backup_rmi_host,tcp.p_rmi_port,tcp.b_rmi_port);
                             udpMessager();
                         } catch (InterruptedException | IOException e) {
                             e.printStackTrace();

@@ -118,14 +118,14 @@ public class Auction implements Serializable {
                 }
             }
 
-            if (!bids.get(n_bids - 1).getKey().equals(username)) {
-                bids.get(n_bids - 1).setValue(amount);
-            } else {
-                bids.remove(n_bids - 1);
-            }
-
-            for (int i = n_bids - 2; i >= index_first_occur; i--) {
-                bids.remove(i);
+            boolean last_valid_user_to_bid=true;
+            for (int i = n_bids - 1; i >= index_first_occur; i--) {
+                if(!bids.get(i).getKey().equals(username) && last_valid_user_to_bid){
+                    bids.get(i).setValue(amount);
+                    last_valid_user_to_bid=false;
+                }else{
+                    bids.remove(i);
+                }
             }
         }
     }
