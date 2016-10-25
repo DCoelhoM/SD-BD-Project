@@ -20,10 +20,9 @@ public class UDPSender{
                         int counter = 0;
                         try {
                             counter = tcp.RMI.checkNumberUsers(tcp.host_port);
-                            String msg = "Number of clients in " + tcp.host_port + "is: " + counter;
+                            String msg = "Number of clients in " + tcp.host_port + " is: " + counter;
                             InetAddress group = InetAddress.getByName("224.1.2.3");
                             MulticastSocket s = new MulticastSocket(tcp.port);
-                            System.out.println("o port é " + tcp.port);
                             DatagramPacket hi = new DatagramPacket(msg.getBytes(), msg.length(), group, 5555);
                             s.send(hi);
                             sleep(5000);

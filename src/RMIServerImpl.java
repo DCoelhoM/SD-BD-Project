@@ -233,7 +233,6 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     }
     @Override
     public void sendNotification(){
-        System.out.println(notifications);
         List<Map.Entry<String,String>> notes_to_delete = Collections.synchronizedList(new ArrayList<>());
         synchronized (notifications) {
             for (Map.Entry<String, String> n : notifications) {
@@ -245,7 +244,8 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
                             tcp.sendNotification(n.getKey(), n.getValue());
                             notes_to_delete.add(n);
                         } catch (RemoteException e) {
-                            System.out.println("TCP PARTIDO");
+                            System.out.println("TCP OFFLINE");
+                            //TODO DESLIGAR TCP E CLIENTES DESSE TCP
                         }
                     }
                 }

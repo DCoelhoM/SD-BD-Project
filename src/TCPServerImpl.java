@@ -82,9 +82,7 @@ public class TCPServerImpl extends java.rmi.server.UnicastRemoteObject implement
                             DatagramPacket message = new DatagramPacket(buf, buf.length);
                             try {
                                 while (true) {
-                                    System.out.println("á escuta de mensagem");
                                     socket.receive(message);
-                                    System.out.println("Mensagem recebida");
                                     String parsedMessage = new String(message.getData(), 0, message.getLength());
                                     System.out.println(parsedMessage);
                                 }
