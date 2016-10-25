@@ -9,12 +9,14 @@ import java.util.*;
 
 public class TCPServerImpl extends java.rmi.server.UnicastRemoteObject implements TCPServer{
     RMIServer RMI = null;
-    Notification notes = null;
+    Notification notes = null; //array list com os users online para mandar notificaçao
     String host;
     int port;
     String host_port;
     String primary_rmi_host, backup_rmi_host;
     int p_rmi_port, b_rmi_port;
+    Map<String,Integer> TCPs_load;
+
 
     public TCPServerImpl(String host, int port, String p_host, String b_host, int p_port, int b_port)  throws java.rmi.RemoteException{
         super();
@@ -25,11 +27,23 @@ public class TCPServerImpl extends java.rmi.server.UnicastRemoteObject implement
         this.p_rmi_port = p_port;
         this.backup_rmi_host = b_host;
         this.b_rmi_port = b_port;
+        this.TCPs_load = Collections.synchronizedMap(new HashMap<String, Integer>());
     }
 
     @Override
     public void sendNotification(String username, String msg) throws RemoteException {
         notes.sendNotification(username,msg);
+    }
+
+    public void sendTCPloadNotification(){
+        String msg = "type: notification_load , server_list : " + TCPs_load.size();
+        int i=0;
+        for (Map.Entry<String,Integer> load:TCPs_load.entrySet()){
+            String host_port[] = load.getKey().split(":");
+            msg+= ", server_" + i + "_hostname: " + host_port[0] + ", server_" + i + "_port: " + host_port[1] + ", server_" + i + "_load: " + load.getValue();
+            i++;
+        }
+        notes.sendNotificationToAll(msg);
     }
 
     void rmiConnection(String p_host, String b_host, int p_port, int b_port){ //tenta o primario, se não funcionar, vai tentar o backup
@@ -84,10 +98,23 @@ public class TCPServerImpl extends java.rmi.server.UnicastRemoteObject implement
                                 while (true) {
                                     socket.receive(message);
                                     String parsedMessage = new String(message.getData(), 0, message.getLength());
+                                    String load_info[] = parsedMessage.split("->");
+                                    tcp.TCPs_load.put(load_info[0].trim(), Integer.parseInt(load_info[1].trim()));
                                     System.out.println(parsedMessage);
                                 }
                             } catch (IOException e) {
                                 e.printStackTrace();
+                            }
+                        }
+                    }.start();
+                    //Notificação de load de 60 em 60 segs
+                    new Thread() {
+                        public void run() {
+                            tcp.sendTCPloadNotification();
+                            try {
+                                Thread.sleep(60000);
+                            } catch (InterruptedException e) {
+                                System.out.println("Error in sleep of notification thread!");
                             }
                         }
                     }.start();
@@ -248,6 +275,7 @@ class Connection extends Thread {
     private void logout(){
         try {
             if(tcp.RMI.logout(this.username)) {
+                tcp.notes.removeUser(username);
                 out.println("type : logout, ok : true");
             } else {
                 out.println("type : logout, ok : false");
@@ -510,6 +538,12 @@ class Notification{
 
     public void sendNotification(String username, String msg) {
         connected_users.get(username).println(msg);
+    }
+
+    public void sendNotificationToAll(String msg){
+        for (Map.Entry<String,PrintWriter> u: connected_users.entrySet()){
+            u.getValue().println(msg);
+        }
     }
 
     public void addConnectedUser(String username, PrintWriter out){
