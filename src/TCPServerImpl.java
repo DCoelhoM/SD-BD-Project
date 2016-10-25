@@ -493,7 +493,6 @@ class Notification{
 
     public void sendNotification(String username, String msg) {
         connected_users.get(username).println(msg);
-        System.out.println("MANDOU A PUTA DA NOTIFCACAO! para o cabrao do "+ username + " " + msg);
     }
 
     public void addConnectedUser(String username, PrintWriter out){

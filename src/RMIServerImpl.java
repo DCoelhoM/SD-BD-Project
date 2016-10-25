@@ -1,3 +1,4 @@
+import javax.xml.bind.SchemaOutputResolver;
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.rmi.NotBoundException;
@@ -501,12 +502,12 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
 
     }
 
-    static void rmiStart(){
+    static void rmiStart(int port){
         Registry r;
         RMIServerImpl rmiServer;
         try {
             rmiServer = new RMIServerImpl();
-            r = LocateRegistry.createRegistry(7000);
+            r = LocateRegistry.createRegistry(port);
             r.rebind("iBei", rmiServer);
             rmiServer.loadAuctions();
             rmiServer.loadUsers();
@@ -533,29 +534,38 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         }
 
     }
-    static void testRMI(RMIServer RMI){
+    static void testRMI(RMIServer RMI, int port){
         try {
             String answer = RMI.ping();
             try {
                 System.out.println(answer);
                 Thread.sleep(10000);
-                testRMI(RMI);
+                testRMI(RMI, port);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
 
         } catch (RemoteException e) {
-            rmiStart();
+            rmiStart(port);
         }
 
     }
 
     public static void main(String args[]){
-        try {
-            RMIServer RMI = (RMIServer) LocateRegistry.getRegistry(7000).lookup("iBei");
-            testRMI(RMI);
-        } catch (RemoteException | NotBoundException e) {
-            rmiStart();
+        String host_aux_rmi;
+        int port_aux_rmi, port;
+        if (args.length==3){
+            host_aux_rmi = args[0];
+            port_aux_rmi = Integer.parseInt(args[1]);
+            port = Integer.parseInt(args[3]);
+            try {
+                RMIServer RMI = (RMIServer) LocateRegistry.getRegistry(host_aux_rmi,port_aux_rmi).lookup("iBei");
+                testRMI(RMI, port);
+            } catch (RemoteException | NotBoundException e) {
+                rmiStart(port);
+            }
+        } else {
+            System.out.println("Usage: host_second_rmi port_second_rmi port");
         }
 
 
