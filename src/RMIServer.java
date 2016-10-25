@@ -29,7 +29,7 @@ interface RMIServer extends java.rmi.Remote {
     //ADMIN
     boolean cancel_auction(int id) throws java.rmi.RemoteException;
     boolean ban_user(String username) throws java.rmi.RemoteException;
-    String stats() throws java.rmi.RemoteException;
+    void statistics() throws java.rmi.RemoteException;
     String ping() throws  java.rmi.RemoteException;
 
 }

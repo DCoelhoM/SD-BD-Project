@@ -331,8 +331,25 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     }
 
     @Override
-    public String stats() throws RemoteException {
-        return null;
+    public void statistics() throws RemoteException {
+
+
+        HashMap<String, Integer> usersAuctions = new HashMap<>();
+
+        for(Auction a:auctions){
+            // if user is already in the hashmap, +=1 the number of auctions created
+            if(usersAuctions.containsKey(a.getOwner())){
+                usersAuctions.put(a.getOwner(), usersAuctions.get(a.getOwner()) + 1);
+            } else {
+                usersAuctions.put(a.getOwner(), 1);
+            }
+        }
+
+        List values = new ArrayList(usersAuctions.values());
+        //Collections.sort(values);
+        Collections.sort(values, Collections.reverseOrder());
+        System.out.println(values);
+
     }
 
     @Override
