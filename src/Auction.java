@@ -224,7 +224,7 @@ public class Auction implements Serializable {
         int msg_count = messages.size();
         int bids_count = bids.size();
 
-        String aux_details = "code: "+ code + ", title: " + title + ", description: " + description + ", deadline: " + deadline.toString() + ", messages_count: " + String.valueOf(msg_count);
+        String aux_details = "code: "+ code + ", title: " + title + ", description: " + description + ", deadline: " + deadline.toString() + ", messages_count: " + String.valueOf(msg_count) + " , state : " + state;
 
         int i=0;
         for (Map.Entry<String,String> m : messages){

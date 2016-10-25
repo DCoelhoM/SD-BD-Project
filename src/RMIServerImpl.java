@@ -299,10 +299,13 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
 
     @Override
     public boolean cancel_auction(int id) throws RemoteException {
+        System.out.println("na cancel_auction");
         for (Auction a:auctions){
+            System.out.println("auction tem id" + a.getID());
             if (a.getID()==id){
                 a.cancelAuction();
                 saveAuctions();
+                System.out.println("cancelei a auction");
                 return true;
             }
         }
