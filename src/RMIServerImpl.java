@@ -560,7 +560,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         if (args.length==3){
             host_aux_rmi = args[0];
             port_aux_rmi = Integer.parseInt(args[1]);
-            port = Integer.parseInt(args[3]);
+            port = Integer.parseInt(args[2]);
             try {
                 RMIServer RMI = (RMIServer) LocateRegistry.getRegistry(host_aux_rmi,port_aux_rmi).lookup("iBei");
                 testRMI(RMI, port);
