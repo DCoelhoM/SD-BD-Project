@@ -98,7 +98,7 @@ class Connection extends Thread {
     BufferedReader in = null;
     private Socket clientSocket;
     private int thread_number;
-    private String username;
+    private String username = null;
     private TCPServerImpl tcp;
 
     public Connection (Socket newClientSocket, int number, TCPServerImpl tcp) {
@@ -340,7 +340,6 @@ class Connection extends Thread {
         Auction auction;
         try {
             auction = tcp.RMI.detail_auction(id);
-            System.out.println("123");
             out.println(auction);
         } catch (RemoteException e) {
             try {
