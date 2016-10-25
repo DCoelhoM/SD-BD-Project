@@ -299,13 +299,11 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
 
     @Override
     public boolean cancel_auction(int id) throws RemoteException {
-        System.out.println("na cancel_auction");
         for (Auction a:auctions){
             System.out.println("auction tem id" + a.getID());
-            if (a.getID()==id){
+            if (a.getID()==id && a.getState().equals("active")){
                 a.cancelAuction();
                 saveAuctions();
-                System.out.println("cancelei a auction");
                 return true;
             }
         }
@@ -315,7 +313,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     @Override
     public boolean ban_user(String username) throws RemoteException {
         for (User u:users){
-            if (u.getUsername().equals(username)){
+            if (u.getUsername().equals(username) && u.getState().equals("active")){
                 u.ban();
                 for (Auction a:auctions){
                     //Cancelar auctions do utilizador

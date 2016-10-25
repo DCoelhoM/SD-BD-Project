@@ -7,6 +7,7 @@ class TCPClient {
         Socket socket;
         PrintWriter outToServer;
         BufferedReader inFromServer = null;
+
         try {
             // connect to the specified address:port (default is localhost:12345)
             if(args.length == 2)

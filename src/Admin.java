@@ -13,6 +13,7 @@ public class Admin {
     BufferedReader in = null;
     private String username;
     private int id;
+    static Socket socket;
 
 
     int port;
@@ -31,7 +32,6 @@ public class Admin {
 
     public static void main(String args[]){
         int serverPort = 6000;
-        Socket socket;
         PrintWriter outToServer;
         BufferedReader inFromServer = null;
 
@@ -47,9 +47,6 @@ public class Admin {
             Admin admin = new Admin(serverPort);
             admin.rmiConnection();
 
-            // create streams for writing to and reading from the socket
-            inFromServer = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            outToServer = new PrintWriter(socket.getOutputStream(), true);
 
             // create a thread for reading from the keyboard and writing to the server
             new Thread() {
@@ -62,18 +59,12 @@ public class Admin {
                 }
             }.start();
 
-
-            // the main thread loops reading from the server and writing to System.out
-            String messageFromServer;
-            while((messageFromServer = inFromServer.readLine()) != null)
-                System.out.println(messageFromServer);
-
-        }  catch (IOException e) {
-            if(inFromServer == null)
-                System.out.println("\nUsage: java TCPClient <host> <port>\n");
-            System.out.println(e.getMessage());
-        } finally {
-            try { inFromServer.close(); } catch (Exception e) {}
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
 
     }
@@ -90,8 +81,6 @@ public class Admin {
             String secondSubString = split[1].trim();
             parsedInput.put(firstSubString, secondSubString);
         }
-        System.out.println(parsedInput);
-
         this.chosenType(parsedInput);
     }
 
@@ -118,9 +107,9 @@ public class Admin {
 
         try {
             if(this.RMI.ban_user(username)){
-                out.println("type : ban_user , status : ok");
+                System.out.println("type : ban_user , status : ok");
             } else {
-                out.println("type : ban_user , status : false");
+                System.out.println("type : ban_user , status : false");
             }
         } catch (RemoteException e) {
             e.printStackTrace();
@@ -141,8 +130,81 @@ public class Admin {
         }
     }
 
+    //  Este teste deverá, no mínimo, um leilão, licitar nesse leilão, consultar os detalhes desse leilão e verificar se o resultado está correcto
+
     private static void test(){
-        System.out.println("ola");
+
+        PrintWriter outToServer = null;
+        BufferedReader inFromServer = null;
+
+        // create streams for writing to and reading from the socket
+        try {
+            inFromServer = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            outToServer = new PrintWriter(socket.getOutputStream(), true);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        // TEST REGISTER
+        String REGISTER = "type : register , username : test_register, password : test_register";
+        outToServer.println(REGISTER);
+
+        String SUCCESSFUL_REGISTER = "type : register , ok : true";
+        try {
+            if(inFromServer.readLine().contentEquals(SUCCESSFUL_REGISTER)){
+                System.out.println("Register Working Fine!");
+            } else {
+                System.out.println("Wrong Answer From register");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        //TEST LOGIN
+        String LOGIN = "type : login , username : test_register , password : test_register";
+        outToServer.println(LOGIN);
+
+        String SUCCESSFUL_LOGIN = "type : login , ok : true";
+        try {
+            if(inFromServer.readLine().contentEquals(SUCCESSFUL_LOGIN)){
+                System.out.println("Login Working Fine");
+            } else {
+                System.out.println("Wrong Answer From login");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        //TEST AUCTION CREATION
+        String CREATE_AUCTION = "type : create_auction , code : 9780451524934, title : 1984 , description : big brother is watching you , deadline : 2017-10-24 15-16 , amount : 10";
+        outToServer.println(CREATE_AUCTION);
+
+        String SUCCESSFUL_CREATE_AUCTION = "type : create_auction , ok : true";
+        try {
+            if(inFromServer.readLine().contentEquals(SUCCESSFUL_CREATE_AUCTION)){
+                System.out.println("Auction Creation Working Fine!");
+            } else {
+                System.out.println("Wrong Answer From auction_creation");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        String DETAIL_AUCTION = "type : detail_auction , id : 1";
+        outToServer.println(DETAIL_AUCTION);
+
+        String DETAIL_AUCTION_EXPECTED_ANSWER = "code: 9780451524934, title: 1984, description: big brother is watching you, deadline: Tue Oct 24 15:16:00 WEST 2017, messages_count: 0, bids_count: 0";
+        try {
+            if(inFromServer.readLine().contentEquals(DETAIL_AUCTION_EXPECTED_ANSWER)){
+                System.out.println("Detail Auction Working Fine!");
+            } else {
+                System.out.println("Wrong Answer From detail_auction");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
     }
 }
 
