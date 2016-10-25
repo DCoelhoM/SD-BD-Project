@@ -42,7 +42,7 @@ public class TCPServerImpl extends java.rmi.server.UnicastRemoteObject implement
     }
 
     public static void main(String args[]){
-        if(args.length==1) {
+        if(args.length==6) {
             String tcp_host, primary_rmi_host, backup_rmi_host;
             int tcp_port, p_rmi_port, b_rmi_port;
             tcp_host = args[0];

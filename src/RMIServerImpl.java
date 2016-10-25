@@ -13,7 +13,7 @@ import java.util.*;
 public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implements RMIServer{
     private List<Auction> auctions;
     private List<User> users;
-    private List<Map.Entry<String,String>> online_users; //{Username, TCP_Port}
+    private List<Map.Entry<String,String>> online_users; //{Username, TCP_Host:Port}
     private List<Map.Entry<String,TCPServer>> connected_TCPs; //{TCP_Host:Port, TCPServer} TODO Se forem maquinas diferentes tem que receber o host tambem
     private List<Map.Entry<String,String>> notifications; //{Username, Message}
 
