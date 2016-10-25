@@ -113,7 +113,7 @@ public class TCPServerImpl extends java.rmi.server.UnicastRemoteObject implement
                             while(true) {
                                 tcp.sendTCPloadNotification();
                                 try {
-                                    Thread.sleep(30000);
+                                    Thread.sleep(60000);
                                 } catch (InterruptedException e) {
                                     System.out.println("Error in sleep of notification thread!");
                                 }
