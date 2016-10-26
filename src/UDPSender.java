@@ -19,13 +19,14 @@ public class UDPSender{
                     while (true) {
                         int counter = 0;
                         try {
+                            // TODO: PASSAR ISTO PARA FORA!
                             counter = tcp.RMI.checkNumberUsers(tcp.host_port);
                             String msg =  tcp.host_port + "->" + counter;
                             InetAddress group = InetAddress.getByName("224.1.2.3");
                             MulticastSocket s = new MulticastSocket(tcp.port);
-                            DatagramPacket hi = new DatagramPacket(msg.getBytes(), msg.length(), group, 5555);
-                            s.send(hi);
-                            sleep(5000);
+                            DatagramPacket message = new DatagramPacket(msg.getBytes(), msg.length(), group, 5555);
+                            s.send(message);
+                            sleep(10000);
                         } catch (RemoteException e) {
                             try {
                                 System.out.println("Connection with problems...");
