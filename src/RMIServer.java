@@ -32,7 +32,7 @@ interface RMIServer extends java.rmi.Remote {
     boolean ban_user(String username) throws java.rmi.RemoteException;
     Map mostAuctionsUsers() throws java.rmi.RemoteException;
     Map userWithMostAuctionsWon() throws java.rmi.RemoteException;
-    void auctionsInTheLast10Days() throws java.rmi.RemoteException;
+    ArrayList<Auction> auctionsInTheLast10Days() throws java.rmi.RemoteException;
     String ping() throws  java.rmi.RemoteException;
 
 }

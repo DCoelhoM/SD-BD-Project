@@ -1,3 +1,4 @@
+import javax.xml.bind.SchemaOutputResolver;
 import java.io.*;
 import java.net.*;
 import java.rmi.NotBoundException;
@@ -140,7 +141,7 @@ public class Admin {
 
     private void statistics() {
         System.out.println("estatísticas");
-
+        ArrayList<Auction> listAuctionsInLast10Days;
         Map<Integer, String> map;
 
         try {
@@ -177,7 +178,11 @@ public class Admin {
 
         //SimpleDateFormat myFormat = new SimpleDateFormat("dd MM yyyy");
         try {
-            this.RMI.auctionsInTheLast10Days();
+            listAuctionsInLast10Days = this.RMI.auctionsInTheLast10Days();
+            System.out.println("Auctions in the last 10 days : ");
+            for (Auction auction : listAuctionsInLast10Days){
+                System.out.println(auction);
+            }
         } catch (RemoteException e) {
             e.printStackTrace();
         }

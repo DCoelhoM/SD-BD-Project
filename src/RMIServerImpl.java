@@ -1,6 +1,4 @@
-import javax.xml.bind.SchemaOutputResolver;
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -390,12 +388,16 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     }
 
     @Override
-    public void auctionsInTheLast10Days(){
+    public ArrayList<Auction> auctionsInTheLast10Days(){
+        ArrayList<Auction> listAuctionsInTheLast10Days = new ArrayList<>();
         Date now = new Date();
         for(Auction a : auctions){
             long diff = now.getTime() - a.getCreationDate().getTime();
-            System.out.println ("Days: " + TimeUnit.DAYS.convert(diff, TimeUnit.MILLISECONDS));
+            if(TimeUnit.DAYS.convert(diff, TimeUnit.MILLISECONDS) <= 10){
+                listAuctionsInTheLast10Days.add(a);
+            }
         }
+        return listAuctionsInTheLast10Days;
     }
 
 
