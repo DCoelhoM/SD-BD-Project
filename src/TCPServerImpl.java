@@ -189,10 +189,14 @@ class Connection extends Thread {
 
         // TODO: ter a certeza que sub string 1 e 2 vem separadas por espaço : espaço, senão parte. verificar no script de python
         for (String field : aux) {
-            String[] split = field.split(":");
-            String firstSubString = split[0].trim();
-            String secondSubString = split[1].trim();
-            parsedInput.put(firstSubString, secondSubString);
+            try {
+                String[] split = field.split(":");
+                String firstSubString = split[0].trim();
+                String secondSubString = split[1].trim();
+                parsedInput.put(firstSubString, secondSubString);
+            }catch(ArrayIndexOutOfBoundsException e){
+                run();
+            }
         }
         System.out.println(parsedInput);
 
@@ -242,6 +246,7 @@ class Connection extends Thread {
                 online_users();
                 break;
             default:
+                run();
                 break;
         }
     }
