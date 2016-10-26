@@ -3,7 +3,10 @@ import java.net.*;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 public class Admin {
 
@@ -137,6 +140,7 @@ public class Admin {
 
     private void statistics() {
         System.out.println("estatísticas");
+
         Map<Integer, String> map;
 
         try {
@@ -170,6 +174,15 @@ public class Admin {
         } catch (RemoteException e) {
             e.printStackTrace();
         }
+
+        //SimpleDateFormat myFormat = new SimpleDateFormat("dd MM yyyy");
+        try {
+            this.RMI.auctionsInTheLast10Days();
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
+
+
     }
 
     private static void magia(){

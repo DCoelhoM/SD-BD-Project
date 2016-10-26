@@ -9,6 +9,7 @@ import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implements RMIServer{
     private List<Auction> auctions;
@@ -386,6 +387,15 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
             sortedHashMap.put(entry.getKey(), entry.getValue());
         }
         return sortedHashMap;
+    }
+
+    @Override
+    public void auctionsInTheLast10Days(){
+        Date now = new Date();
+        for(Auction a : auctions){
+            long diff = now.getTime() - a.getCreationDate().getTime();
+            System.out.println ("Days: " + TimeUnit.DAYS.convert(diff, TimeUnit.MILLISECONDS));
+        }
     }
 
 
