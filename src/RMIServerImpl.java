@@ -12,8 +12,8 @@ import java.util.concurrent.TimeUnit;
 public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implements RMIServer{
     private List<Auction> auctions;
     private List<User> users;
-    private List<Map.Entry<String,String>> online_users; //{Username, TCP_Host:Port} TODO PASSAR PARA HASHMAP <- ESTE 99%
-    private List<Map.Entry<String,TCPServer>> connected_TCPs; //{TCP_Host:Port, TCPServer} TODO PASSAR PARA HASHMAP <-ESTE 100%
+    private Map<String,String> online_users; //{Username, TCP_Host:Port}
+    private Map<String,TCPServer> connected_TCPs; //{TCP_Host:Port, TCPServer}
     private List<Map.Entry<String,String>> notifications; //{Username, Message}
 
 
@@ -21,20 +21,20 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         super();
         auctions = Collections.synchronizedList(new ArrayList<>());
         users = Collections.synchronizedList(new ArrayList<>());
-        online_users = Collections.synchronizedList(new ArrayList<>());
-        connected_TCPs = Collections.synchronizedList(new ArrayList<>());
+        online_users = Collections.synchronizedMap(new HashMap<>());
+        connected_TCPs = Collections.synchronizedMap(new HashMap<>());
         notifications = Collections.synchronizedList(new ArrayList<>());
     }
 
     @Override
     public void addTCPServer(TCPServer tcp, String host_port) throws RemoteException{
-        connected_TCPs.add(new AbstractMap.SimpleEntry<>(host_port, tcp));
+        connected_TCPs.put(host_port, tcp);
     }
 
     @Override
     public int checkNumberUsers(String host_port) throws RemoteException {
         int counter = 0;
-        for(Map.Entry<String,String> u : online_users){
+        for(Map.Entry<String,String> u : online_users.entrySet()){
             if(u.getValue().equals(host_port)){
                 counter ++;
             }
@@ -72,18 +72,13 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     }
 
     private void addOnlineUser(String username, String tcp_host_port) throws RemoteException {
-        online_users.add(new AbstractMap.SimpleEntry<>(username, tcp_host_port));
+        online_users.put(username, tcp_host_port);
         this.saveOnlineUsers();
     }
 
 
     public boolean userAlreadyLogged(String username){
-        for (Map.Entry<String, String> u : online_users) {
-            if (u.getKey().equals(username)) {
-                return true;
-            }
-        }
-        return false;
+        return online_users.containsKey(username);
     }
 
     @Override
@@ -104,12 +99,10 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
 
 
     private boolean removeOnlineUser(String username) throws RemoteException {
-        for (Map.Entry<String, String> u : online_users) {
-            if (u.getKey().equals(username)) {
-                online_users.remove(u);
-                this.saveOnlineUsers();
-                return true;
-            }
+        if (online_users.containsKey(username)){
+            online_users.remove(username);
+            saveOnlineUsers();
+            return true;
         }
         return false;
     }
@@ -215,18 +208,14 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
 
     //TODO
     private String checkIfUserOnline(String username){
-        for (Map.Entry<String,String> u:online_users){
-            if(u.getKey().equals(username)){
-                return u.getValue(); //RETORNA A PORTA DO TCP SERVER QUE ESTÁ CONECTADO
-            }
+        if(online_users.containsKey(username)){
+            return online_users.get(username);
         }
         return "";
     }
     private TCPServer getTCPbyHostPort(String tcp_host_port){
-        for (Map.Entry<String,TCPServer> tcp:connected_TCPs){
-            if(tcp.getKey().equals(tcp_host_port)){
-                return tcp.getValue();
-            }
+        if (connected_TCPs.containsKey(tcp_host_port)){
+            return connected_TCPs.get(tcp_host_port);
         }
         return null;
     }
@@ -277,7 +266,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     public ArrayList<String> online_users() throws RemoteException {
 
         ArrayList<String> users_online = new ArrayList<>();
-        for (Map.Entry<String,String> online_user:online_users){
+        for (Map.Entry<String,String> online_user:online_users.entrySet()){
             users_online.add(online_user.getKey());
         }
         return users_online;
@@ -537,7 +526,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
             file.openRead("online_users");
 
             try {
-                this.online_users = (List<Map.Entry<String,String>>) file.readObject();
+                this.online_users = (HashMap<String,String>) file.readObject();
             } catch (IOException | ClassNotFoundException e) {
                 System.out.println("Problem loading online_users");
             }
