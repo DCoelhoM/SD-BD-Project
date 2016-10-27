@@ -286,11 +286,12 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     public void end_auctions(){
         boolean flag = false;
         for (Auction a:auctions){
-            if (a.getDeadline().before(new Date())){
+            if (a.getDeadline().before(new Date()) && a.getState().equals("active")){
                 a.endAuction();
                 synchronized (notifications){
-                    notifications.add(new AbstractMap.SimpleEntry<>(a.getUsernameLastBid(), "type: notification_auction_won, text: You have won the following auction: "+a.getID()));
+                    notifications.add(new AbstractMap.SimpleEntry<>(a.getUsernameLastBid(), "type: notification_auction_won, text: You have won the auction with the following id: "+a.getID()));
                 }
+                sendNotification();
                 flag = true;
             }
         }

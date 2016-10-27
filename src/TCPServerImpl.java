@@ -174,7 +174,6 @@ class Connection extends Thread {
         } catch (IOException e) {
             System.out.println("IO:" + e);
         } catch (NullPointerException e) {
-            System.out.println("piças");
             System.out.println(this.username);
             logout();
         }
@@ -318,7 +317,7 @@ class Connection extends Thread {
 
     // type : create_auction , code : 9780451524934, title : 1984 , description : big brother is watching you , deadline : 2016-10-25 23-33 , amount : 10
 
-    // type : create_auction , code : 123456789, title : 1984 , description : big brother is watching you , deadline : 2016-10-26 18-30 , amount : 10
+    // type : create_auction , code : 123456789, title : 1984 , description : big brother is watching you , deadline : 2016-10-27 15-07 , amount : 10
     //String owner, int code, String title, String description, Date deadline, int amount
     private void create_auction(LinkedHashMap<String, String> parsedInput){
         String code;
