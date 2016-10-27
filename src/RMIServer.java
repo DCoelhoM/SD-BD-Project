@@ -34,6 +34,9 @@ interface RMIServer extends java.rmi.Remote {
     Map mostAuctionsUsers() throws java.rmi.RemoteException;
     Map userWithMostAuctionsWon() throws java.rmi.RemoteException;
     ArrayList<Auction> auctionsInTheLast10Days() throws java.rmi.RemoteException;
-    String ping() throws  java.rmi.RemoteException;
+
+    //Test RMI
+    void saveDataFromPrimaryRMI(DataTransfer data);
+    DataTransfer ping() throws  java.rmi.RemoteException;
 
 }

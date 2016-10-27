@@ -1,3 +1,4 @@
+import javax.xml.crypto.Data;
 import java.io.IOException;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
@@ -409,8 +410,8 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
 
 
     @Override
-    public String ping() throws RemoteException {
-        return "Pong";
+    public DataTransfer ping() throws RemoteException {
+        return new DataTransfer(auctions,users,online_users,notifications);
     }
 
 
@@ -573,7 +574,18 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         } catch (IOException e) {
             System.out.println("Problem opening notifications file(READ MODE)(No notifications found)");
         }
+    }
 
+    public void saveDataFromPrimaryRMI(DataTransfer data){
+        this.auctions = data.getAuctions();
+        this.users = data.getUsers();
+        this.online_users = data.getOnline_users();
+        this.notifications = data.getNotifications();
+        saveOnlineUsers();
+        saveAuctions();
+        saveNotifications();
+        saveUsers();
+        System.out.println("Data saved with success");
     }
 
     static void rmiStart(int port){
@@ -610,9 +622,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     }
     static void testRMI(RMIServer RMI, int port){
         try {
-            String answer = RMI.ping();
+            DataTransfer dataFromOtherRMI = RMI.ping();
+            RMI.saveDataFromPrimaryRMI(dataFromOtherRMI);
             try {
-                System.out.println(answer);
                 Thread.sleep(10000);
                 testRMI(RMI, port);
             } catch (InterruptedException e) {
@@ -643,5 +655,36 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         }
 
 
+    }
+}
+
+class DataTransfer{
+    private List<Auction> auctions;
+    private List<User> users;
+    private Map<String,String> online_users; //{Username, TCP_Host:Port}
+    private List<Map.Entry<String,String>> notifications; //{Username, Message}
+
+    public DataTransfer(List<Auction> auctions, List<User> users, Map<String,String> online_users, List<Map.Entry<String,String>> notifications){
+        super();
+        this.auctions = auctions;
+        this.users = users;
+        this.online_users = online_users;
+        this.notifications = notifications;
+    }
+
+    public List<Auction> getAuctions() {
+        return auctions;
+    }
+
+    public List<User> getUsers() {
+        return users;
+    }
+
+    public Map<String, String> getOnline_users() {
+        return online_users;
+    }
+
+    public List<Map.Entry<String, String>> getNotifications() {
+        return notifications;
     }
 }
