@@ -116,9 +116,9 @@ public class Admin {
 
         try {
             if(this.RMI.ban_user(username)){
-                System.out.println("type : ban_user , status : ok");
+                System.out.println("type : ban_user , ok : true");
             } else {
-                System.out.println("type : ban_user , status : false");
+                System.out.println("type : ban_user , ok : false");
             }
         } catch (RemoteException e) {
             e.printStackTrace();
