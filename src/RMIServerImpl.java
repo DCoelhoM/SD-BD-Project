@@ -1,6 +1,8 @@
 import javax.xml.crypto.Data;
 import java.io.IOException;
+import java.io.Serializable;
 import java.rmi.NotBoundException;
+import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -576,7 +578,8 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         }
     }
 
-    public void saveDataFromPrimaryRMI(DataTransfer data){
+    @Override
+    public void saveDataFromPrimaryRMI(DataTransfer data) throws RemoteException{
         this.auctions = data.getAuctions();
         this.users = data.getUsers();
         this.online_users = data.getOnline_users();
@@ -622,8 +625,11 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     }
     static void testRMI(RMIServer RMI, int port){
         try {
+            System.out.println("lalal0");
             DataTransfer dataFromOtherRMI = RMI.ping();
+            System.out.println("lalal1");
             RMI.saveDataFromPrimaryRMI(dataFromOtherRMI);
+            System.out.println("lalal2");
             try {
                 Thread.sleep(10000);
                 testRMI(RMI, port);
@@ -632,6 +638,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
             }
 
         } catch (RemoteException e) {
+            System.out.println(e);
             rmiStart(port);
         }
 
@@ -658,7 +665,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     }
 }
 
-class DataTransfer{
+class DataTransfer implements Serializable{
     private List<Auction> auctions;
     private List<User> users;
     private Map<String,String> online_users; //{Username, TCP_Host:Port}
