@@ -635,7 +635,6 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
             }
 
         } catch (RemoteException e) {
-            System.out.println(e);
             rmiStart(port);
         }
 
