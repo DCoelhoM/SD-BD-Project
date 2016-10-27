@@ -1,8 +1,6 @@
-import javax.xml.crypto.Data;
 import java.io.IOException;
 import java.io.Serializable;
 import java.rmi.NotBoundException;
-import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -235,6 +233,21 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         }
         return null;
     }
+    private void removeTCPandUsers(String host_port){
+        System.out.println(online_users);
+        connected_TCPs.remove(host_port);
+        ArrayList<String> users_offline = new ArrayList<>();
+        for (Map.Entry<String, String> u: online_users.entrySet()){
+            if (u.getValue().equals(host_port)){
+                users_offline.add(u.getKey());
+            }
+        }
+        for (String u: users_offline) {
+            online_users.remove(u);
+        }
+        saveOnlineUsers();
+        System.out.println(online_users);
+    }
     @Override
     public void sendNotification(){
         List<Map.Entry<String,String>> notes_to_delete = Collections.synchronizedList(new ArrayList<>());
@@ -248,8 +261,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
                             tcp.sendNotification(n.getKey(), n.getValue());
                             notes_to_delete.add(n);
                         } catch (RemoteException e) {
-                            System.out.println("TCP OFFLINE");
-                            //TODO DESLIGAR TCP E CLIENTES DESSE TCP
+                            removeTCPandUsers(host_port);
                         }
                     }
                 }
