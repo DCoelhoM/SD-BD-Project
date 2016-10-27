@@ -94,7 +94,6 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
 
     @Override
     public boolean login(String username, String password, String tcp_host_port) throws RemoteException {
-
         if(checkIfUserNotBanned(username)){
             if(!userAlreadyLogged(username)){
                 if(checkCredentials(username, password)){
@@ -540,7 +539,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
             file.openRead("online_users");
 
             try {
-                this.online_users = (HashMap<String,String>) file.readObject();
+                this.online_users = (Map<String,String>) file.readObject();
             } catch (IOException | ClassNotFoundException e) {
                 System.out.println("Problem loading online_users");
             }

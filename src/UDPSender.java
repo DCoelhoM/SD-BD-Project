@@ -34,7 +34,7 @@ public class UDPSender{
                             } catch (InterruptedException e1) {
                                 e1.printStackTrace();
                             }
-                            tcp.rmiConnection(tcp.primary_rmi_host,tcp.backup_rmi_host,tcp.p_rmi_port,tcp.b_rmi_port);
+                            tcp.rmiConnection(tcp.primary_rmi_host,tcp.backup_rmi_host,tcp.p_rmi_port,tcp.b_rmi_port,-1);
                             udpMessager();
                         } catch (InterruptedException | IOException e) {
                             e.printStackTrace();

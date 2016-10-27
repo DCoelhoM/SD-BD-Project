@@ -46,12 +46,22 @@ public class TCPServerImpl extends java.rmi.server.UnicastRemoteObject implement
         notes.sendNotificationToAll(msg);
     }
 
-    void rmiConnection(String p_host, String b_host, int p_port, int b_port){ //tenta o primario, se não funcionar, vai tentar o backup
+    boolean rmiConnection(String p_host, String b_host, int p_port, int b_port,int try_attempts){ //tenta o primario, se não funcionar, vai tentar o backup
+        if (try_attempts==0){
+            return false;
+        }
         try {
             this.RMI = (RMIServer) LocateRegistry.getRegistry(p_host, p_port).lookup("iBei");
             this.RMI.addTCPServer((TCPServer)this,this.host_port);
+            return true;
         } catch (RemoteException | NotBoundException e1) {
-            rmiConnection(b_host,p_host,b_port,p_port);
+            try {
+                try_attempts--;
+                Thread.sleep(5000);
+            } catch (InterruptedException e) {
+                System.out.println("Problem with sleep.(rmiConnection()).");
+            }
+            return rmiConnection(b_host,p_host,b_port,p_port,try_attempts);
         }
     }
 
@@ -72,7 +82,10 @@ public class TCPServerImpl extends java.rmi.server.UnicastRemoteObject implement
             UDPSender udp;
             try {
                 TCPServerImpl tcp = new TCPServerImpl(tcp_host, tcp_port, primary_rmi_host, backup_rmi_host, p_rmi_port, b_rmi_port);
-                tcp.rmiConnection(primary_rmi_host,backup_rmi_host,p_rmi_port,b_rmi_port);
+                if(!tcp.rmiConnection(primary_rmi_host,backup_rmi_host,p_rmi_port,b_rmi_port,6)){
+                    System.out.println("Can't reach both RMI server");
+                    System.exit(0);
+                }
                 int number = 0;
                 try {
                     System.out.println("Listening on port " + tcp_port);
@@ -273,7 +286,10 @@ class Connection extends Thread {
             } catch (InterruptedException e1) {
                 e1.printStackTrace();
             }
-            tcp.rmiConnection(tcp.primary_rmi_host, tcp.backup_rmi_host, tcp.p_rmi_port, tcp.b_rmi_port);
+            if(!tcp.rmiConnection(tcp.primary_rmi_host,tcp.backup_rmi_host,tcp.p_rmi_port,tcp.b_rmi_port,6)){
+                out.println("Problem with RMI connection");
+                return;
+            }
             login(parsedInput);
         }
     }
@@ -310,7 +326,10 @@ class Connection extends Thread {
             } catch (InterruptedException e1) {
                 e1.printStackTrace();
             }
-            tcp.rmiConnection(tcp.primary_rmi_host, tcp.backup_rmi_host, tcp.p_rmi_port, tcp.b_rmi_port);
+            if(!tcp.rmiConnection(tcp.primary_rmi_host,tcp.backup_rmi_host,tcp.p_rmi_port,tcp.b_rmi_port,6)){
+                out.println("Problem with RMI connection");
+                return;
+            }
             register(parsedInput);
         }
     }
@@ -352,7 +371,10 @@ class Connection extends Thread {
             } catch (InterruptedException e1) {
                 e1.printStackTrace();
             }
-            tcp.rmiConnection(tcp.primary_rmi_host, tcp.backup_rmi_host, tcp.p_rmi_port, tcp.b_rmi_port);
+            if(!tcp.rmiConnection(tcp.primary_rmi_host,tcp.backup_rmi_host,tcp.p_rmi_port,tcp.b_rmi_port,6)){
+                out.println("Problem with RMI connection");
+                return;
+            }
             create_auction(parsedInput);
         }
     }
@@ -381,7 +403,10 @@ class Connection extends Thread {
             } catch (InterruptedException e1) {
                 e1.printStackTrace();
             }
-            tcp.rmiConnection(tcp.primary_rmi_host, tcp.backup_rmi_host, tcp.p_rmi_port, tcp.b_rmi_port);
+            if(!tcp.rmiConnection(tcp.primary_rmi_host,tcp.backup_rmi_host,tcp.p_rmi_port,tcp.b_rmi_port,6)){
+                out.println("Problem with RMI connection");
+                return;
+            }
             search_auction(parsedInput);
         }
     }
@@ -402,7 +427,10 @@ class Connection extends Thread {
             } catch (InterruptedException e1) {
                 e1.printStackTrace();
             }
-            tcp.rmiConnection(tcp.primary_rmi_host, tcp.backup_rmi_host, tcp.p_rmi_port, tcp.b_rmi_port);
+            if(!tcp.rmiConnection(tcp.primary_rmi_host,tcp.backup_rmi_host,tcp.p_rmi_port,tcp.b_rmi_port,6)){
+                out.println("Problem with RMI connection");
+                return;
+            }
             detail_auction(parsedInput);
         }
     }
@@ -430,7 +458,10 @@ class Connection extends Thread {
             } catch (InterruptedException e1) {
                 e1.printStackTrace();
             }
-            tcp.rmiConnection(tcp.primary_rmi_host, tcp.backup_rmi_host, tcp.p_rmi_port, tcp.b_rmi_port);
+            if(!tcp.rmiConnection(tcp.primary_rmi_host,tcp.backup_rmi_host,tcp.p_rmi_port,tcp.b_rmi_port,6)){
+                out.println("Problem with RMI connection");
+                return;
+            }
             my_auctions();
         }
     }
@@ -455,7 +486,10 @@ class Connection extends Thread {
             } catch (InterruptedException e1) {
                 e1.printStackTrace();
             }
-            tcp.rmiConnection(tcp.primary_rmi_host, tcp.backup_rmi_host, tcp.p_rmi_port, tcp.b_rmi_port);
+            if(!tcp.rmiConnection(tcp.primary_rmi_host,tcp.backup_rmi_host,tcp.p_rmi_port,tcp.b_rmi_port,6)){
+                out.println("Problem with RMI connection");
+                return;
+            }
             bid(parsedInput);
         }
     }
@@ -477,7 +511,10 @@ class Connection extends Thread {
             } catch (InterruptedException e1) {
                 e1.printStackTrace();
             }
-            tcp.rmiConnection(tcp.primary_rmi_host, tcp.backup_rmi_host, tcp.p_rmi_port, tcp.b_rmi_port);
+            if(!tcp.rmiConnection(tcp.primary_rmi_host,tcp.backup_rmi_host,tcp.p_rmi_port,tcp.b_rmi_port,6)){
+                out.println("Problem with RMI connection");
+                return;
+            }
             edit_auction(parsedInput);
         }
     }
@@ -502,7 +539,10 @@ class Connection extends Thread {
             } catch (InterruptedException e1) {
                 e1.printStackTrace();
             }
-            tcp.rmiConnection(tcp.primary_rmi_host, tcp.backup_rmi_host, tcp.p_rmi_port, tcp.b_rmi_port);
+            if(!tcp.rmiConnection(tcp.primary_rmi_host,tcp.backup_rmi_host,tcp.p_rmi_port,tcp.b_rmi_port,6)){
+                out.println("Problem with RMI connection");
+                return;
+            }
             message(parsedInput);
         }
     }
@@ -530,7 +570,10 @@ class Connection extends Thread {
             } catch (InterruptedException e1) {
                 e1.printStackTrace();
             }
-            tcp.rmiConnection(tcp.primary_rmi_host, tcp.backup_rmi_host, tcp.p_rmi_port, tcp.b_rmi_port);
+            if(!tcp.rmiConnection(tcp.primary_rmi_host,tcp.backup_rmi_host,tcp.p_rmi_port,tcp.b_rmi_port,6)){
+                out.println("Problem with RMI connection");
+                return;
+            }
             online_users();
         }
 
