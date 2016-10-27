@@ -578,8 +578,8 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         }
     }
 
-    @Override
-    public void saveDataFromPrimaryRMI(DataTransfer data) throws RemoteException{
+
+    public void saveDataFromPrimaryRMI(DataTransfer data){
         this.auctions = data.getAuctions();
         this.users = data.getUsers();
         this.online_users = data.getOnline_users();
@@ -588,7 +588,6 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         saveAuctions();
         saveNotifications();
         saveUsers();
-        System.out.println("Data saved with success");
     }
 
     static void rmiStart(int port){
@@ -625,11 +624,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     }
     static void testRMI(RMIServer RMI, int port){
         try {
-            System.out.println("lalal0");
             DataTransfer dataFromOtherRMI = RMI.ping();
-            System.out.println("lalal1");
-            RMI.saveDataFromPrimaryRMI(dataFromOtherRMI);
-            System.out.println("lalal2");
+            new RMIServerImpl().saveDataFromPrimaryRMI(dataFromOtherRMI);
+            System.out.println("Data saved with success.");
             try {
                 Thread.sleep(10000);
                 testRMI(RMI, port);
