@@ -219,10 +219,6 @@ public class Auction implements Serializable {
         this.amount = amount;
     }
 
-    public boolean checkBids(){
-        return bids.size() > 0;
-    }
-
     @Override
     public String toString() {
         int msg_count = messages.size();
@@ -247,6 +243,8 @@ public class Auction implements Serializable {
             aux_details += user + amount;
             j++;
         }
+
+        aux_details += ", state: " + state + ", creator: "+ owner + ", created_at: "+creation_date;
 
         return aux_details;
     }
