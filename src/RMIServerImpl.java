@@ -123,9 +123,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
 
 
     @Override
-    public boolean create_auction(String owner, String code, String title, String description, Date deadline, double amount) throws RemoteException {
-        //TODO DEADLINE > ACTUAL DATE
-        //TODO EMPTY ARGS
+    synchronized public boolean create_auction(String owner, String code, String title, String description, Date deadline, double amount) throws RemoteException {
         Auction new_auc = new Auction(owner, code, title, description, deadline, amount);
         auctions.add(new_auc);
         saveAuctions();
@@ -425,7 +423,24 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
 
     @Override
     public DataTransfer ping() throws RemoteException {
-        return new DataTransfer(auctions,users,online_users,notifications);
+        String filename = "id.txt";
+        TextFile previous_id = new TextFile();
+        int auc_prev_id=0;
+        try {
+            previous_id.openRead(filename);
+            auc_prev_id=Integer.valueOf(previous_id.readLine());
+            previous_id.closeRead();
+        } catch (IOException e) {
+            try {
+                //file doesnt exist -> create new file
+                previous_id.openWriteOW(filename);
+                previous_id.writeLine("0");
+                previous_id.closeWrite();
+            } catch (IOException e1) {
+                System.out.println("Problem with read/create id file.");
+            }
+        }
+        return new DataTransfer(auctions,users,online_users,notifications,auc_prev_id);
     }
 
 
@@ -638,6 +653,15 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         try {
             DataTransfer dataFromOtherRMI = RMI.ping();
             new RMIServerImpl().saveDataFromPrimaryRMI(dataFromOtherRMI);
+            String filename = "id.txt";
+            TextFile previous_id = new TextFile();
+            try {
+                previous_id.openWriteOW(filename);
+                previous_id.writeLine(String.valueOf(dataFromOtherRMI.getLast_auc_id()));
+                previous_id.closeWrite();
+            } catch (java.io.IOException e) {
+                System.out.println("Problem with save id file.");
+            }
             System.out.println("Data saved with success.");
             try {
                 Thread.sleep(10000);
@@ -678,13 +702,15 @@ class DataTransfer implements Serializable{
     private List<User> users;
     private Map<String,String> online_users; //{Username, TCP_Host:Port}
     private List<Map.Entry<String,String>> notifications; //{Username, Message}
+    private int last_auc_id;
 
-    public DataTransfer(List<Auction> auctions, List<User> users, Map<String,String> online_users, List<Map.Entry<String,String>> notifications){
+    public DataTransfer(List<Auction> auctions, List<User> users, Map<String,String> online_users, List<Map.Entry<String,String>> notifications, int last_auc_id){
         super();
         this.auctions = auctions;
         this.users = users;
         this.online_users = online_users;
         this.notifications = notifications;
+        this.last_auc_id = last_auc_id;
     }
 
     public List<Auction> getAuctions() {
@@ -701,5 +727,9 @@ class DataTransfer implements Serializable{
 
     public List<Map.Entry<String, String>> getNotifications() {
         return notifications;
+    }
+
+    public int getLast_auc_id() {
+        return last_auc_id;
     }
 }
