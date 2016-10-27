@@ -196,7 +196,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
                     a.setDescription(data.get("description"));
                 }
                 if (data.containsKey("deadline")){
-                    DateFormat df = new SimpleDateFormat("dd-MM-yyyy HH:mm");
+                    DateFormat df = new SimpleDateFormat("dd-MM-yyyy HH-mm");
                     try {
                         a.setDeadline(df.parse(data.get("deadline")));
                     } catch (ParseException e) {
@@ -288,6 +288,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         for (Auction a:auctions){
             if (a.getDeadline().before(new Date())){
                 a.endAuction();
+                synchronized (notifications){
+                    notifications.add(new AbstractMap.SimpleEntry<>(a.getUsernameLastBid(), "type: notification_auction_won, text: You have won the following auction: "+a.getID()));
+                }
                 flag = true;
             }
         }
@@ -320,7 +323,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
                         a.cancelAuction();
                     } else if (a.checkUserBidActivity(username)){ //confirmar se fez licitações nos leilões
                         a.removeUserBids(username);
-                        a.addMsg("NOTIFICATION","SORRY FOR THE PROBLEM");
+                        message(a.getID(),"Admin","User "+ username +" was banned, sorry for the inconvenience!");
                     }
                 }
                 return true;
