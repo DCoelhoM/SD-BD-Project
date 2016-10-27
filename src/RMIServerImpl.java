@@ -86,12 +86,26 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         return false;
     }
 
+    public boolean checkIfUserNotBanned(String username){
+        for(User u : users){
+            if(u.getUsername().equals(username)){
+                if(u.getState().equals("active")){
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     @Override
     public boolean login(String username, String password, String tcp_host_port) throws RemoteException {
-        if(!userAlreadyLogged(username)){
-            if(checkCredentials(username, password)){
-                addOnlineUser(username,tcp_host_port);
-                return true;
+
+        if(checkIfUserNotBanned(username)){
+            if(!userAlreadyLogged(username)){
+                if(checkCredentials(username, password)){
+                    addOnlineUser(username,tcp_host_port);
+                    return true;
+                }
             }
         }
         return false;

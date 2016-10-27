@@ -14,6 +14,7 @@ interface RMIServer extends java.rmi.Remote {
     boolean login(String username, String password, String tcp_host_port) throws java.rmi.RemoteException;
     boolean logout(String username) throws java.rmi.RemoteException;
     boolean userAlreadyLogged(String username) throws java.rmi.RemoteException;
+    boolean checkIfUserNotBanned(String username) throws java.rmi.RemoteException;
 
     //AUCTIONS
     boolean create_auction(String owner, String code, String title, String description, Date deadline, double amount) throws java.rmi.RemoteException;

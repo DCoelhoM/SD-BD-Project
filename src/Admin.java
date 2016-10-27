@@ -35,8 +35,6 @@ public class Admin {
 
     public static void main(String args[]){
         int serverPort = 6000;
-        PrintWriter outToServer;
-        BufferedReader inFromServer = null;
 
         try{
             if(args.length==3){
