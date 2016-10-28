@@ -4,7 +4,7 @@ iBei: Reverse Auctions
 Compile
 ```
 cd src
-sh src/run.sh
+sh run.sh
 ```
 
 Create jar
