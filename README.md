@@ -7,13 +7,6 @@ cd src
 sh run.sh
 ```
 
-Create jar
-```
-jar cvfm ADMIN.jar MANIFEST_ADMIN .
-jar cvfm RMI.jar MANIFEST_RMI .
-jar cvfm TCP.jar MANIFEST_TCP .
-```
-
 Usage
 ```
 java -jar ADMIN.jar TCP_PORT RMI_PORT

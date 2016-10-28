@@ -2,7 +2,6 @@ package iBei.RMIServer;
 import iBei.TCPServer.TCPServer;
 import iBei.Auxiliar.*;
 import java.io.IOException;
-import java.io.Serializable;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -291,7 +290,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     }
 
     /**
-     * Method to remove disconnected TCP and connected users from that TCP
+     * Method to remove disconnected TCP and their users
      */
     private void removeTCPandUsers(String host_port){
         System.out.println(online_users);
@@ -826,45 +825,5 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         }
 
 
-    }
-}
-
-/**
- * Class to help pass data between RMIs
- */
-class DataTransfer implements Serializable{
-    private List<Auction> auctions;
-    private List<User> users;
-    private Map<String,String> online_users; //{Username, TCP_Host:Port}
-    private List<Map.Entry<String,String>> notifications; //{Username, Message}
-    private int last_auc_id;
-
-    public DataTransfer(List<Auction> auctions, List<User> users, Map<String,String> online_users, List<Map.Entry<String,String>> notifications, int last_auc_id){
-        super();
-        this.auctions = auctions;
-        this.users = users;
-        this.online_users = online_users;
-        this.notifications = notifications;
-        this.last_auc_id = last_auc_id;
-    }
-
-    public List<Auction> getAuctions() {
-        return auctions;
-    }
-
-    public List<User> getUsers() {
-        return users;
-    }
-
-    public Map<String, String> getOnline_users() {
-        return online_users;
-    }
-
-    public List<Map.Entry<String, String>> getNotifications() {
-        return notifications;
-    }
-
-    public int getLast_auc_id() {
-        return last_auc_id;
     }
 }

@@ -1,6 +1,6 @@
 package iBei.Admin;
-import iBei.RMIServer.*;
-import iBei.Auxiliar.*;
+import iBei.RMIServer.RMIServer;
+import iBei.Auxiliar.Auction;
 import java.io.*;
 import java.net.*;
 import java.rmi.NotBoundException;

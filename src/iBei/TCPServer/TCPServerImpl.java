@@ -1,6 +1,6 @@
 package iBei.TCPServer;
 import iBei.RMIServer.RMIServer;
-import iBei.Auxiliar.*;
+import iBei.Auxiliar.Auction;
 
 import java.net.*;
 import java.io.*;
