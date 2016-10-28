@@ -1,3 +1,7 @@
+package iBei.TCPServer;
+import iBei.RMIServer.RMIServer;
+import iBei.Auxiliar.*;
+
 import java.net.*;
 import java.io.*;
 import java.rmi.NotBoundException;

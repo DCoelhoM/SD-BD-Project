@@ -1,3 +1,4 @@
+package iBei.Auxiliar;
 import java.io.*;
 
 public class TextFile {

@@ -1,3 +1,6 @@
+package iBei.RMIServer;
+import iBei.TCPServer.TCPServer;
+import iBei.Auxiliar.*;
 import java.io.IOException;
 import java.io.Serializable;
 import java.rmi.NotBoundException;
@@ -374,10 +377,12 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         for(Auction a:auctions){
             // if user is already in the hashmap, +=1 the number of auctions created
             if(a.getState().equals("ended")){
-                if(usersAuctions.containsKey(a.getUsernameLastBid())) {
-                    usersAuctions.put(a.getUsernameLastBid(), usersAuctions.get(a.getUsernameLastBid()) + 1);
-                } else {
-                    usersAuctions.put(a.getUsernameLastBid(), 1);
+                if (a.getNumberBids()>0) {
+                    if (usersAuctions.containsKey(a.getUsernameLastBid())) {
+                        usersAuctions.put(a.getUsernameLastBid(), usersAuctions.get(a.getUsernameLastBid()) + 1);
+                    } else {
+                        usersAuctions.put(a.getUsernameLastBid(), 1);
+                    }
                 }
             }
         }

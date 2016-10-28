@@ -1,9 +1,12 @@
+package iBei.RMIServer;
+import iBei.TCPServer.TCPServer;
+import iBei.Auxiliar.*;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
-interface RMIServer extends java.rmi.Remote {
+public interface RMIServer extends java.rmi.Remote {
 
     //TCP
     void addTCPServer(TCPServer tcp, String host_port) throws java.rmi.RemoteException;

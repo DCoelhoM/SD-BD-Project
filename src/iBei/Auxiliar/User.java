@@ -1,3 +1,4 @@
+package iBei.Auxiliar;
 import java.io.Serializable;
 
 public class User implements Serializable{
