@@ -30,11 +30,17 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         notifications = Collections.synchronizedList(new ArrayList<>());
     }
 
+    /**
+     * Method to save an instance of TCPServer when it connects to RMI
+     */
     @Override
     public void addTCPServer(TCPServer tcp, String host_port) throws RemoteException{
         connected_TCPs.put(host_port, tcp);
     }
 
+    /**
+     * Method to count the number of users connected to a TCPServer
+     */
     @Override
     public int checkNumberUsers(String host_port) throws RemoteException {
         int counter = 0;
@@ -46,6 +52,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         return counter;
     }
 
+    /**
+     * Method to check if a username is available
+     */
     private boolean checkUsernameAvailability(String username){
         for (User u:users){
             if (u.getUsername().equals(username)){
@@ -54,6 +63,10 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         }
         return true;
     }
+
+    /**
+     * Method to register new user
+     */
     @Override
     public boolean register(String username, String password) throws RemoteException {
         if (checkUsernameAvailability(username)){
@@ -66,6 +79,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         }
     }
 
+    /**
+     * Method to check if username and password are valid
+     */
     private boolean checkCredentials(String username, String password){
         for (User u : users){
             if (u.getUsername().equals(username) && u.getState().equals("active")){
@@ -75,16 +91,24 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         return false; //username not found
     }
 
+    /**
+     * Method to save username and host:port to online_users
+     */
     private void addOnlineUser(String username, String tcp_host_port) throws RemoteException {
         online_users.put(username, tcp_host_port);
         this.saveOnlineUsers();
     }
 
-
+    /**
+     * Method to check if user is already logged
+     */
     public boolean userAlreadyLogged(String username){
         return online_users.containsKey(username);
     }
 
+    /**
+     * Method to check if user isn't banned
+     */
     public boolean checkIfUserNotBanned(String username){
         for(User u : users){
             if(u.getUsername().equals(username)){
@@ -96,6 +120,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         return false;
     }
 
+    /**
+     * Method to login a user
+     */
     @Override
     public boolean login(String username, String password, String tcp_host_port) throws RemoteException {
         if(checkIfUserNotBanned(username)){
@@ -109,12 +136,17 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         return false;
     }
 
+    /**
+     * Method to logout a user
+     */
     @Override
     public boolean logout(String username) throws RemoteException {
         return removeOnlineUser(username);
     }
 
-
+    /**
+     * Method to remove user from online_users
+     */
     private boolean removeOnlineUser(String username) throws RemoteException {
         if (online_users.containsKey(username)){
             online_users.remove(username);
@@ -124,7 +156,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         return false;
     }
 
-
+    /**
+     * Method to create a new auction
+     */
     @Override
     synchronized public boolean create_auction(String owner, String code, String title, String description, Date deadline, double amount) throws RemoteException {
         Auction new_auc = new Auction(owner, code, title, description, deadline, amount);
@@ -133,6 +167,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         return true;
     }
 
+    /**
+     * Method to search for various auctions with a specific code
+     */
     @Override
     public ArrayList<Auction> search_auction(String code) throws RemoteException {
         ArrayList<Auction> auctions_found = new ArrayList<>();
@@ -144,6 +181,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         return auctions_found;
     }
 
+    /**
+     * Method to searh for an auction by id
+     */
     @Override
     public Auction detail_auction(int id) throws RemoteException {
         for (Auction a:auctions){
@@ -154,6 +194,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         return null;
     }
 
+    /**
+     * Method to list all auctions from a specific user
+     */
     @Override
     public ArrayList<Auction> my_auctions(String username) throws RemoteException {
         ArrayList<Auction> user_aucs = new ArrayList<>();
@@ -165,6 +208,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         return user_aucs;
     }
 
+    /**
+     * Method to bid on a specific auction
+     */
     @Override
     public boolean bid(int id, String username, double amount) throws RemoteException {
         for (Auction a:auctions){
@@ -189,6 +235,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         return false;
     }
 
+    /**
+     * Method to edit various or a specific attribute of an auction
+     */
     @Override
     public boolean edit_auction(String username, int id, HashMap<String,String> data) throws RemoteException {
         for (Auction a : auctions){
@@ -221,19 +270,29 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         return false;
     }
 
-    //TODO
+    /**
+     * Method to check if user is online
+     */
     private String checkIfUserOnline(String username){
         if(online_users.containsKey(username)){
             return online_users.get(username);
         }
         return "";
     }
+
+    /**
+     * Method to get the TCP instance by host:port
+     */
     private TCPServer getTCPbyHostPort(String tcp_host_port){
         if (connected_TCPs.containsKey(tcp_host_port)){
             return connected_TCPs.get(tcp_host_port);
         }
         return null;
     }
+
+    /**
+     * Method to remove disconnected TCP and connected users from that TCP
+     */
     private void removeTCPandUsers(String host_port){
         System.out.println(online_users);
         connected_TCPs.remove(host_port);
@@ -249,6 +308,10 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         saveOnlineUsers();
         System.out.println(online_users);
     }
+
+    /**
+     * Method to send a notification if the user is online
+     */
     @Override
     public void sendNotification(){
         List<Map.Entry<String,String>> notes_to_delete = Collections.synchronizedList(new ArrayList<>());
@@ -274,6 +337,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         this.saveNotifications();
     }
 
+    /**
+     * Method to add a message to a specific auction
+     */
     @Override
     public boolean message(int auction_id, String username, String msg) throws RemoteException {
         for (Auction a:auctions){
@@ -291,6 +357,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         return false;
     }
 
+    /**
+     * Method to list all online users
+     */
     @Override
     public ArrayList<String> online_users() throws RemoteException {
 
@@ -301,6 +370,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         return users_online;
     }
 
+    /**
+     * Method to end auctions when the deadline ends
+     */
     public void end_auctions(){
         boolean flag = false;
         for (Auction a:auctions){
@@ -318,6 +390,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         }
     }
 
+    /**
+     * Method to cancel an auction (Admin permission)
+     */
     @Override
     public boolean cancel_auction(int id) throws RemoteException {
         for (Auction a:auctions){
@@ -331,6 +406,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         return false;
     }
 
+    /**
+     * Method to ban a user (Admin permission)
+     */
     @Override
     public boolean ban_user(String username) throws RemoteException {
         for (User u:users){
@@ -351,6 +429,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         return false;
     }
 
+    /**
+     * Method that counts users auctions and returns it ordered
+     */
     @Override
     public Map mostAuctionsUsers() throws RemoteException {
 
@@ -369,6 +450,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         return map;
     }
 
+    /**
+     * Method that counts users won auctions and returns it ordered
+     */
     @Override
     public Map userWithMostAuctionsWon() throws RemoteException {
 
@@ -391,6 +475,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         return map;
     }
 
+    /**
+     * Method to sort a HashMap by value
+     */
     private static HashMap sortByValues(HashMap map) {
         List list = new LinkedList(map.entrySet());
         // Defined Custom Comparator here
@@ -411,6 +498,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         return sortedHashMap;
     }
 
+    /**
+     * Method to list all the auctions created in the last 10 days
+     */
     @Override
     public ArrayList<Auction> auctionsInTheLast10Days(){
         ArrayList<Auction> listAuctionsInTheLast10Days = new ArrayList<>();
@@ -425,7 +515,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     }
 
 
-
+    /**
+     * Method to check RMI connection and at the same time transfer data between RMI's
+     */
     @Override
     public DataTransfer ping() throws RemoteException {
         String filename = "id.txt";
@@ -448,7 +540,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         return new DataTransfer(auctions,users,online_users,notifications,auc_prev_id);
     }
 
-
+    /**
+     * Method to save auctions to a file
+     */
     public void saveAuctions(){
         ObjectFile file = new ObjectFile();
         try {
@@ -468,7 +562,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         }
 
     }
-
+    /**
+     * Method to save users to a file
+     */
     public void saveUsers(){
         ObjectFile file = new ObjectFile();
         try {
@@ -488,6 +584,10 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         }
 
     }
+
+    /**
+     * Method to save online_users to a file
+     */
     public void saveOnlineUsers(){
         ObjectFile file = new ObjectFile();
         try {
@@ -508,6 +608,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
 
     }
 
+    /**
+     * Method to save notifications to a file
+     */
     public void saveNotifications(){
         ObjectFile file = new ObjectFile();
         try {
@@ -527,6 +630,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         }
     }
 
+    /**
+     * Method to load auctions from a file
+     */
     public void loadAuctions(){
         ObjectFile file = new ObjectFile();
         try {
@@ -547,6 +653,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         }
     }
 
+    /**
+     * Method to load users from a file
+     */
     public void loadUsers(){
         ObjectFile file = new ObjectFile();
         try {
@@ -568,6 +677,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         }
     }
 
+    /**
+     * Method to load online_users from a file
+     */
     public void loadOnlineUsers(){
         ObjectFile file = new ObjectFile();
         try {
@@ -589,6 +701,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         }
     }
 
+    /**
+     * Method to load notifications from a file
+     */
     public void loadNotifications(){
         ObjectFile file = new ObjectFile();
         try {
@@ -610,7 +725,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         }
     }
 
-
+    /**
+     * Method to save all data received from primary RMI via ping() method
+     */
     public void saveDataFromPrimaryRMI(DataTransfer data){
         this.auctions = data.getAuctions();
         this.users = data.getUsers();
@@ -622,6 +739,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         saveUsers();
     }
 
+    /**
+     * Method that initializes RMI and starts a Thread that calls end_auctions() with a minute interval
+     */
     static void rmiStart(int port){
         Registry r;
         RMIServerImpl rmiServer;
@@ -654,6 +774,10 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         }
 
     }
+
+    /**
+     * Method that checks if primary RMI is up, and if not calls rmiStart()
+     */
     static void testRMI(RMIServer RMI, int port){
         try {
             DataTransfer dataFromOtherRMI = RMI.ping();
@@ -681,6 +805,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
 
     }
 
+    /**
+     * Method to init RMIServer
+     */
     public static void main(String args[]){
         String host_aux_rmi;
         int port_aux_rmi, port;
@@ -702,6 +829,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     }
 }
 
+/**
+ * Class to help pass data between RMIs
+ */
 class DataTransfer implements Serializable{
     private List<Auction> auctions;
     private List<User> users;
