@@ -64,7 +64,7 @@ public class Admin {
                 }
             }.start();
         } catch (IOException e) {
-            e.printStackTrace();
+            System.out.println("Problem connecting to RMI/TCP");
         }
 
     }
@@ -106,7 +106,7 @@ public class Admin {
                 System.out.println("type : ban_user , ok : false");
             }
         } catch (RemoteException e) {
-            e.printStackTrace();
+            System.out.println("RMI connection problems");
         }
     }
 
@@ -120,7 +120,7 @@ public class Admin {
                 System.out.println("nao apaguei");
             }
         } catch (RemoteException e) {
-            e.printStackTrace();
+            System.out.println("RMI connection problems");
         }
     }
 
@@ -142,7 +142,7 @@ public class Admin {
                 i++;
             }
         } catch (RemoteException e) {
-            e.printStackTrace();
+            System.out.println("RMI connection problems");
         }
 
         try {
@@ -158,7 +158,7 @@ public class Admin {
                 i++;
             }
         } catch (RemoteException e) {
-            e.printStackTrace();
+            System.out.println("RMI connection problems");
         }
 
         //SimpleDateFormat myFormat = new SimpleDateFormat("dd MM yyyy");
@@ -169,7 +169,7 @@ public class Admin {
                 System.out.println(auction);
             }
         } catch (RemoteException e) {
-            e.printStackTrace();
+            System.out.println("RMI connection problems");
         }
 
 
@@ -227,7 +227,7 @@ public class Admin {
                 System.out.println("Wrong Answer From register");
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            System.out.println("RMI/TCP connection problems");
         }
 
         //TEST LOGIN
@@ -241,7 +241,7 @@ public class Admin {
                 System.out.println("Wrong Answer From login");
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            System.out.println("RMI/TCP connection problems");
         }
 
         //TEST AUCTION CREATION
@@ -255,7 +255,7 @@ public class Admin {
                 System.out.println("Wrong Answer From auction_creation");
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            System.out.println("RMI/TCP connection problems");
         }
 
         //TEST MY_AUCTIONS
@@ -271,7 +271,7 @@ public class Admin {
                 System.out.println("Wrong Answer From my_auctions");
             }
         } catch (IOException e){
-            e.printStackTrace();
+            System.out.println("RMI/TCP connection problems");
         }
 
         //TEST DETAIL_AUCTION
@@ -285,7 +285,7 @@ public class Admin {
                 System.out.println("Wrong Answer From detail_auction");
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            System.out.println("RMI/TCP connection problems");
         }
 
         //TEST LOGOUT
@@ -299,7 +299,7 @@ public class Admin {
                 System.out.println("Wrong Answer From logout");
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            System.out.println("RMI/TCP connection problems");
         }
 
     }

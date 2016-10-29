@@ -34,11 +34,17 @@ public class TCPServerImpl extends java.rmi.server.UnicastRemoteObject implement
         this.TCPs_load = Collections.synchronizedMap(new HashMap<String, Integer>());
     }
 
+    /**
+     * Method to send notification to a specific user, called by RMI(callback)
+     */
     @Override
     public void sendNotification(String username, String msg) throws RemoteException {
         notes.sendNotification(username,msg);
     }
 
+    /**
+     * Method to warn TCPClients about TCPServer load
+     */
     public void sendTCPloadNotification(){
         String msg = "type: notification_load , server_list : " + TCPs_load.size();
         int i=0;
@@ -50,6 +56,9 @@ public class TCPServerImpl extends java.rmi.server.UnicastRemoteObject implement
         notes.sendNotificationToAll(msg);
     }
 
+    /**
+     * Method to connect to RMI with timeout
+     */
     boolean rmiConnection(String p_host, String b_host, int p_port, int b_port,int try_attempts){ //tenta o primario, se não funcionar, vai tentar o backup
         if (try_attempts==0){
             return false;
@@ -69,94 +78,97 @@ public class TCPServerImpl extends java.rmi.server.UnicastRemoteObject implement
         }
     }
 
+    /**
+     * Method to init TCPServer
+     */
     public static void main(String args[]){
+        String tcp_host = "localhost", primary_rmi_host = "localhost", backup_rmi_host= "localhost" ;
+        int tcp_port=6000, p_rmi_port=7000, b_rmi_port=7000;
         if(args.length==6) {
-            String tcp_host, primary_rmi_host, backup_rmi_host;
-            int tcp_port, p_rmi_port, b_rmi_port;
             tcp_host = args[0];
             tcp_port = Integer.parseInt(args[1]);
             primary_rmi_host = args[2];
             p_rmi_port = Integer.parseInt(args[3]);
             backup_rmi_host = args[4];
             b_rmi_port = Integer.parseInt(args[5]);
+        }
 
+        System.setProperty("java.net.preferIPv4Stack", "true");
 
-            System.setProperty("java.net.preferIPv4Stack", "true");
-
-            UDPSender udp;
-            try {
-                TCPServerImpl tcp = new TCPServerImpl(tcp_host, tcp_port, primary_rmi_host, backup_rmi_host, p_rmi_port, b_rmi_port);
-                if(!tcp.rmiConnection(primary_rmi_host,backup_rmi_host,p_rmi_port,b_rmi_port,6)){
-                    System.out.println("Can't reach both RMI server");
-                    System.exit(0);
-                }
-                int number = 0;
-                try {
-                    System.out.println("Listening on port " + tcp_port);
-                    ServerSocket listenSocket = new ServerSocket(tcp_port);
-                    System.out.println("LISTEN SOCKET=" + listenSocket);
-                    tcp.notes = new Notification();
-                    udp = new UDPSender(tcp);
-                    udp.udpMessager();
-
-                    // MULTICAST - RECEBER MENSAGENS UDP
-                    new Thread() {
-                        public void run() {
-                            MulticastSocket socket = null;
-                            try {
-                                socket = new MulticastSocket(5555); // 5555 é a PORTA
-                                socket.joinGroup(InetAddress.getByName("224.1.2.3")); // 224.1.2.3 É O ENDEREÇO DO GRUPO
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
-                            byte[] buf = new byte[1000];
-                            DatagramPacket message = new DatagramPacket(buf, buf.length);
-                            try {
-                                while (true) {
-                                    socket.receive(message);
-                                    String parsedMessage = new String(message.getData(), 0, message.getLength());
-                                    String load_info[] = parsedMessage.split("->");
-                                    tcp.TCPs_load.put(load_info[0].trim(), Integer.parseInt(load_info[1].trim()));
-                                    System.out.println(parsedMessage);
-                                }
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
-                        }
-                    }.start();
-                    //Notificação de load de 60 em 60 segs
-                    new Thread() {
-                        public void run() {
-                            while(true) {
-                                tcp.sendTCPloadNotification();
-                                try {
-                                    Thread.sleep(60000);
-                                } catch (InterruptedException e) {
-                                    System.out.println("Error in sleep of notification thread!");
-                                }
-                            }
-                        }
-                    }.start();
-
-
-                    while (true) {
-                        Socket clientSocket = listenSocket.accept(); // BLOQUEANTE
-                        System.out.println("CLIENT_SOCKET (created at accept())=" + clientSocket);
-                        number++;
-                        new Connection(clientSocket, number, tcp);
-                    }
-                } catch (IOException e) {
-                    System.out.println("Listen:" + e.getMessage());
-                }
-            } catch (Exception e) {
-                System.out.println("Exception in main: " + e);
+        UDPSender udp;
+        try {
+            TCPServerImpl tcp = new TCPServerImpl(tcp_host, tcp_port, primary_rmi_host, backup_rmi_host, p_rmi_port, b_rmi_port);
+            if (!tcp.rmiConnection(primary_rmi_host, backup_rmi_host, p_rmi_port, b_rmi_port, 6)) {
+                System.out.println("Can't reach both RMI server");
+                System.exit(0);
             }
-        } else {
-            System.out.println("Usage: tcp_host tcp_port primary_rmi_host primary_rmi_ port backup_rmi_host backup_rmi_port");
+            int number = 0;
+            try {
+                System.out.println("Listening on port " + tcp_port);
+                ServerSocket listenSocket = new ServerSocket(tcp_port);
+                System.out.println("LISTEN SOCKET=" + listenSocket);
+                tcp.notes = new Notification();
+                udp = new UDPSender(tcp);
+                udp.udpMessager();
+
+                // MULTICAST - RECEBER MENSAGENS UDP
+                new Thread() {
+                    public void run() {
+                        MulticastSocket socket = null;
+                        try {
+                            socket = new MulticastSocket(5555); // 5555 é a PORTA
+                            socket.joinGroup(InetAddress.getByName("224.1.2.3")); // 224.1.2.3 É O ENDEREÇO DO GRUPO
+                        } catch (IOException e) {
+                            System.out.println("Problem with Multicast");
+                        }
+                        byte[] buf = new byte[1000];
+                        DatagramPacket message = new DatagramPacket(buf, buf.length);
+                        try {
+                            while (true) {
+                                socket.receive(message);
+                                String parsedMessage = new String(message.getData(), 0, message.getLength());
+                                String load_info[] = parsedMessage.split("->");
+                                tcp.TCPs_load.put(load_info[0].trim(), Integer.parseInt(load_info[1].trim()));
+                                System.out.println(parsedMessage);
+                            }
+                        } catch (IOException e) {
+                            System.out.println("Problem with sending/receiving multicast messages");
+                        }
+                    }
+                }.start();
+                //Notificação de load de 60 em 60 segs
+                new Thread() {
+                    public void run() {
+                        while (true) {
+                            tcp.sendTCPloadNotification();
+                            try {
+                                Thread.sleep(60000);
+                            } catch (InterruptedException e) {
+                                System.out.println("Error in sleep of notification thread!");
+                            }
+                        }
+                    }
+                }.start();
+
+
+                while (true) {
+                    Socket clientSocket = listenSocket.accept(); // BLOQUEANTE
+                    System.out.println("CLIENT_SOCKET (created at accept())=" + clientSocket);
+                    number++;
+                    new Connection(clientSocket, number, tcp);
+                }
+            } catch (IOException e) {
+                System.out.println("Listen:" + e.getMessage());
+            }
+        }catch (Exception e) {
+            System.out.println("Exception in main: " + e);
         }
     }
 }
 
+/**
+ * Class to handle each client connection
+ */
 class Connection extends Thread {
     PrintWriter out;
     BufferedReader in = null;
@@ -175,9 +187,11 @@ class Connection extends Thread {
             this.start();
         }catch(IOException e){System.out.println("Connection:" + e.getMessage());}
     }
-    //=============================
+
+    /**
+     * Method to read input from client
+     */
     public void run() {
-        String resposta;
         try {
             while (true) {
                 //an echo server
@@ -196,6 +210,9 @@ class Connection extends Thread {
         }
     }
 
+    /**
+     * Method to parse input from user
+     */
     private void parseUserInput(String data){
 
         String[] aux;
@@ -219,6 +236,9 @@ class Connection extends Thread {
         chosenType(parsedInput);
     }
 
+    /**
+     * Method that calls the specified method in parameter type
+     */
     private void chosenType(LinkedHashMap<String, String> parsedInput){
         String type = parsedInput.get("type");
 
@@ -268,6 +288,9 @@ class Connection extends Thread {
     }
 
     // type : login , username : pierre , password : omidyar
+    /**
+     * Method that calls RMI login method and responds to the client
+     */
     private void login(LinkedHashMap<String, String> parsedInput) {
         String username, password;
         username = parsedInput.get("username");
@@ -284,12 +307,7 @@ class Connection extends Thread {
                 out.println("type : login , ok : false");
             }
         } catch (IOException e) {
-            try {
-                System.out.println("Connection with problems...");
-                Thread.sleep(5000);
-            } catch (InterruptedException e1) {
-                e1.printStackTrace();
-            }
+            System.out.println("Connection with problems...");
             if(!tcp.rmiConnection(tcp.primary_rmi_host,tcp.backup_rmi_host,tcp.p_rmi_port,tcp.b_rmi_port,6)){
                 out.println("Problem with RMI connection");
                 return;
@@ -298,6 +316,9 @@ class Connection extends Thread {
         }
     }
 
+    /**
+     * Method that calls RMI logout method and responds to the client
+     */
     private void logout(){
         try {
             if(tcp.RMI.logout(this.username)) {
@@ -307,11 +328,19 @@ class Connection extends Thread {
                 out.println("type : logout, ok : false");
             }
         } catch (RemoteException e) {
-            e.printStackTrace();
+            System.out.println("Connection with problems...");
+            if(!tcp.rmiConnection(tcp.primary_rmi_host,tcp.backup_rmi_host,tcp.p_rmi_port,tcp.b_rmi_port,6)){
+                out.println("Problem with RMI connection");
+                return;
+            }
+            logout();
         }
     }
 
     // type : register , username : pierre , password : omidyar
+    /**
+     * Method that calls RMI register method and responds to the client
+     */
     private void register(LinkedHashMap<String, String> parsedInput){
         String username, password;
         username = parsedInput.get("username");
@@ -324,12 +353,7 @@ class Connection extends Thread {
                 out.println("type : register , ok : false");
             }
         } catch (IOException e) {
-            try {
-                System.out.println("Connection with problems...");
-                Thread.sleep(5000);
-            } catch (InterruptedException e1) {
-                e1.printStackTrace();
-            }
+            System.out.println("Connection with problems...");
             if(!tcp.rmiConnection(tcp.primary_rmi_host,tcp.backup_rmi_host,tcp.p_rmi_port,tcp.b_rmi_port,6)){
                 out.println("Problem with RMI connection");
                 return;
@@ -342,6 +366,9 @@ class Connection extends Thread {
 
     // type : create_auction , code : 123456789, title : 1984 , description : big brother is watching you , deadline : 2016-10-27 15-07 , amount : 10
     //String owner, int code, String title, String description, Date deadline, int amount
+    /**
+     * Method that calls RMI create_auction method and responds to the client
+     */
     private void create_auction(LinkedHashMap<String, String> parsedInput){
         String code;
         double amount;
@@ -359,7 +386,7 @@ class Connection extends Thread {
         try {
             deadline = formattedDate.parse(date);
         } catch (ParseException e) {
-            e.printStackTrace();
+            System.out.println("Problem parsing date");
         }
 
         try {
@@ -369,12 +396,7 @@ class Connection extends Thread {
                 out.println("type : create_auction , ok : false");
             }
         } catch (RemoteException e) {
-            try {
-                System.out.println("Connection with problems...");
-                Thread.sleep(5000);
-            } catch (InterruptedException e1) {
-                e1.printStackTrace();
-            }
+            System.out.println("Connection with problems...");
             if(!tcp.rmiConnection(tcp.primary_rmi_host,tcp.backup_rmi_host,tcp.p_rmi_port,tcp.b_rmi_port,6)){
                 out.println("Problem with RMI connection");
                 return;
@@ -384,6 +406,9 @@ class Connection extends Thread {
     }
 
     // type : search_auction , code : 9780451524935
+    /**
+     * Method that calls RMI search_auction method and responds to the client
+     */
     private void search_auction(LinkedHashMap<String, String> parsedInput){
         String code;
         code = parsedInput.get("code");
@@ -401,12 +426,7 @@ class Connection extends Thread {
             }
             out.println("type: search_auction , items_count: "+String.valueOf(count)+auctions_found);
         } catch (RemoteException e) {
-            try {
-                System.out.println("Connection with problems...");
-                Thread.sleep(5000);
-            } catch (InterruptedException e1) {
-                e1.printStackTrace();
-            }
+            System.out.println("Connection with problems...");
             if(!tcp.rmiConnection(tcp.primary_rmi_host,tcp.backup_rmi_host,tcp.p_rmi_port,tcp.b_rmi_port,6)){
                 out.println("Problem with RMI connection");
                 return;
@@ -416,7 +436,9 @@ class Connection extends Thread {
     }
 
     // type : detail_auction , id : 101
-
+    /**
+     * Method that calls RMI detail_auction method and responds to the client
+     */
     private void detail_auction(LinkedHashMap<String, String> parsedInput){
         int id = Integer.parseInt(parsedInput.get("id"));
 
@@ -425,12 +447,7 @@ class Connection extends Thread {
             auction = tcp.RMI.detail_auction(id);
             out.println(auction);
         } catch (RemoteException e) {
-            try {
-                System.out.println("Connection with problems...");
-                Thread.sleep(5000);
-            } catch (InterruptedException e1) {
-                e1.printStackTrace();
-            }
+            System.out.println("Connection with problems...");
             if(!tcp.rmiConnection(tcp.primary_rmi_host,tcp.backup_rmi_host,tcp.p_rmi_port,tcp.b_rmi_port,6)){
                 out.println("Problem with RMI connection");
                 return;
@@ -440,6 +457,9 @@ class Connection extends Thread {
     }
 
     // type : my_auctions
+    /**
+     * Method that calls RMI my_auctions method and responds to the client
+     */
     private void my_auctions(){
         ArrayList<Auction> user_auctions;
 
@@ -456,12 +476,7 @@ class Connection extends Thread {
             }
             out.println("type: my_auctions , items_count: "+String.valueOf(count)+auctions_found);
         } catch (RemoteException e) {
-            try {
-                System.out.println("Connection with problems...");
-                Thread.sleep(5000);
-            } catch (InterruptedException e1) {
-                e1.printStackTrace();
-            }
+            System.out.println("Connection with problems...");
             if(!tcp.rmiConnection(tcp.primary_rmi_host,tcp.backup_rmi_host,tcp.p_rmi_port,tcp.b_rmi_port,6)){
                 out.println("Problem with RMI connection");
                 return;
@@ -471,7 +486,9 @@ class Connection extends Thread {
     }
 
     // type : bid , id : 101, amount : 9
-    // TODO : NÃO DEIXAR BIDS ABAIXO DE 0
+    /**
+     * Method that calls RMI bid method and responds to the client
+     */
     private void bid(LinkedHashMap<String, String> parsedInput){
         int id = Integer.parseInt(parsedInput.get("id"));
         double amount = Double.parseDouble(parsedInput.get("amount"));
@@ -484,12 +501,7 @@ class Connection extends Thread {
                 out.println("type : bid , ok : false");
             }
         } catch (RemoteException e) {
-            try {
-                System.out.println("Connection with problems...");
-                Thread.sleep(5000);
-            } catch (InterruptedException e1) {
-                e1.printStackTrace();
-            }
+            System.out.println("Connection with problems...");
             if(!tcp.rmiConnection(tcp.primary_rmi_host,tcp.backup_rmi_host,tcp.p_rmi_port,tcp.b_rmi_port,6)){
                 out.println("Problem with RMI connection");
                 return;
@@ -499,6 +511,9 @@ class Connection extends Thread {
     }
 
     // type : edit_auction , id : 101 , amount : 25
+    /**
+     * Method that calls RMI edit_auction method and responds to the client
+     */
     private void edit_auction(LinkedHashMap<String, String> parsedInput){
         int id = Integer.parseInt(parsedInput.get("id"));
 
@@ -509,12 +524,7 @@ class Connection extends Thread {
                 out.println("type : edit_auction , ok : false");
             }
         }catch (RemoteException e) {
-            try {
-                System.out.println("Connection with problems...");
-                Thread.sleep(5000);
-            } catch (InterruptedException e1) {
-                e1.printStackTrace();
-            }
+            System.out.println("Connection with problems...");
             if(!tcp.rmiConnection(tcp.primary_rmi_host,tcp.backup_rmi_host,tcp.p_rmi_port,tcp.b_rmi_port,6)){
                 out.println("Problem with RMI connection");
                 return;
@@ -523,7 +533,9 @@ class Connection extends Thread {
         }
     }
 
-    //public boolean message(int auction_id, String username, String msg) throws RemoteException {
+    /**
+     * Method that calls RMI message method and responds to the client
+     */
     private void message(LinkedHashMap<String, String> parsedInput){
 
         String message = parsedInput.get("text");
@@ -537,12 +549,7 @@ class Connection extends Thread {
                 out.println("type : message , ok : false");
             }
         } catch (RemoteException e) {
-            try {
-                System.out.println("Connection with problems...");
-                Thread.sleep(5000);
-            } catch (InterruptedException e1) {
-                e1.printStackTrace();
-            }
+            System.out.println("Connection with problems...");
             if(!tcp.rmiConnection(tcp.primary_rmi_host,tcp.backup_rmi_host,tcp.p_rmi_port,tcp.b_rmi_port,6)){
                 out.println("Problem with RMI connection");
                 return;
@@ -551,6 +558,9 @@ class Connection extends Thread {
         }
     }
 
+    /**
+     * Method that calls RMI online_users method and responds to the client
+     */
     private void online_users(){
 
         ArrayList<String> users_online;
@@ -568,12 +578,7 @@ class Connection extends Thread {
             }
             out.println(response);
         } catch (RemoteException e) {
-            try {
-                System.out.println("Connection with problems...");
-                Thread.sleep(5000);
-            } catch (InterruptedException e1) {
-                e1.printStackTrace();
-            }
+            System.out.println("Connection with problems...");
             if(!tcp.rmiConnection(tcp.primary_rmi_host,tcp.backup_rmi_host,tcp.p_rmi_port,tcp.b_rmi_port,6)){
                 out.println("Problem with RMI connection");
                 return;
@@ -584,6 +589,9 @@ class Connection extends Thread {
     }
 }
 
+/**
+ * Class to send notifications to connected users
+ */
 class Notification{
     private Map<String,PrintWriter> connected_users; //{Username, Out}
 

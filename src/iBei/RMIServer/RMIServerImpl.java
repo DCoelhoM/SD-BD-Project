@@ -792,10 +792,10 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
             }
             System.out.println("Data saved with success.");
             try {
-                Thread.sleep(10000);
+                Thread.sleep(1000);
                 testRMI(RMI, port);
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                System.out.println("Problem with testRMI sleep");
             }
 
         } catch (RemoteException e) {
@@ -808,22 +808,18 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
      * Method to init RMIServer
      */
     public static void main(String args[]){
-        String host_aux_rmi;
-        int port_aux_rmi, port;
-        if (args.length==3){
+        String host_aux_rmi = "localhost";
+        int port_aux_rmi=7000, port=7000;
+        if (args.length==3) {
             host_aux_rmi = args[0];
             port_aux_rmi = Integer.parseInt(args[1]);
             port = Integer.parseInt(args[2]);
-            try {
-                RMIServer RMI = (RMIServer) LocateRegistry.getRegistry(host_aux_rmi,port_aux_rmi).lookup("iBei");
-                testRMI(RMI, port);
-            } catch (RemoteException | NotBoundException e) {
-                rmiStart(port);
-            }
-        } else {
-            System.out.println("Usage: host_second_rmi port_second_rmi port");
         }
-
-
+        try {
+            RMIServer RMI = (RMIServer) LocateRegistry.getRegistry(host_aux_rmi,port_aux_rmi).lookup("iBei");
+            testRMI(RMI, port);
+        } catch (RemoteException | NotBoundException e) {
+            rmiStart(port);
+        }
     }
 }
