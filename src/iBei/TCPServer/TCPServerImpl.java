@@ -295,10 +295,8 @@ class Connection extends Thread {
         String username, password;
         username = parsedInput.get("username");
         password = parsedInput.get("password");
-        System.out.println(tcp.port);
         try {
             if (tcp.RMI.login(username, password,tcp.host_port)) {
-                System.out.println(tcp.port);
                 out.println("type : login , ok : true");
                 tcp.notes.addConnectedUser(username,out);
                 tcp.RMI.sendNotification();
