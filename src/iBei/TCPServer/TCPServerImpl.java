@@ -220,7 +220,6 @@ class Connection extends Thread {
 
         aux = data.split(",");
 
-        // TODO: ter a certeza que sub string 1 e 2 vem separadas por espaço : espaço, senão parte. verificar no script de python
         for (String field : aux) {
             try {
                 String[] split = field.split(":");
@@ -242,11 +241,6 @@ class Connection extends Thread {
     private void chosenType(LinkedHashMap<String, String> parsedInput){
         String type = parsedInput.get("type");
 
-        /* TODO: type: logout
-           TODO: testar em 2 maquinas
-           TODO: usar packages
-           TODO: funcionalidades primeiro, tratamento de erros depois
-         */
         switch(type){
             case "login":
                 login(parsedInput);

@@ -20,7 +20,6 @@ public class UDPSender{
                     while (true) {
                         int counter = 0;
                         try {
-                            // TODO: PASSAR ISTO PARA FORA!
                             counter = tcp.RMI.checkNumberUsers(tcp.host_port);
                             String msg =  tcp.host_port + "->" + counter;
                             InetAddress group = InetAddress.getByName("224.1.2.3");
@@ -33,12 +32,12 @@ public class UDPSender{
                                 System.out.println("Connection with problems...");
                                 Thread.sleep(5000);
                             } catch (InterruptedException e1) {
-                                e1.printStackTrace();
+                                System.out.println("Problem with Multicast sleep");
                             }
                             tcp.rmiConnection(tcp.primary_rmi_host,tcp.backup_rmi_host,tcp.p_rmi_port,tcp.b_rmi_port,-1);
                             udpMessager();
                         } catch (InterruptedException | IOException e) {
-                            e.printStackTrace();
+                            System.out.println("Problem with multicast");
                         }
                     }
                 }
