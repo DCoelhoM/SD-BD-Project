@@ -1,4 +1,7 @@
 package iBei.RMIServer;
+
+import java.sql.*;
+
 import iBei.TCPServer.TCPServer;
 import iBei.Auxiliar.*;
 import java.io.IOException;
@@ -6,11 +9,15 @@ import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.sql.SQLException;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.Date;
 import java.util.concurrent.TimeUnit;
+
+
 
 public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implements RMIServer{
     private List<Auction> auctions;
@@ -18,6 +25,13 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     private Map<String,String> online_users; //{Username, TCP_Host:Port}
     private Map<String,TCPServer> connected_TCPs; //{TCP_Host:Port, TCPServer}
     private List<Map.Entry<String,String>> notifications; //{Username, Message}
+
+
+    private static Connection db_connection = null;
+    private static Statement statement = null;
+    private static ResultSet resultSet = null;
+    private static PreparedStatement preparedStatement = null;
+
 
 
     public RMIServerImpl() throws java.rmi.RemoteException{
@@ -158,11 +172,41 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     /**
      * Method to create a new auction
      */
+
+    // type: create_auction, code: 123152152, title: 1928, description: benfica campeao, deadline: 2017-01-01 14:51, amount: 10
     @Override
     synchronized public boolean create_auction(String owner, String code, String title, String description, Date deadline, double amount) throws RemoteException {
         Auction new_auc = new Auction(owner, code, title, description, deadline, amount);
         auctions.add(new_auc);
-        saveAuctions();
+        // PreparedStatements can use variables and are more efficient
+        try {
+            preparedStatement = db_connection.prepareStatement("insert into auction (username, state, code, title, description, created_date, deadline, amount) values (?, ?, ?, ?, ?, ?, ?, ?)");
+            preparedStatement.setString(1, owner);
+            preparedStatement.setString(2, "active");
+            preparedStatement.setString(3, code);
+            preparedStatement.setString(4, title);
+            preparedStatement.setString(5, description);
+            java.sql.Timestamp date = new java.sql.Timestamp(new java.util.Date().getTime());
+            preparedStatement.setTimestamp(6, date);
+            Timestamp timestamp = new Timestamp(deadline.getTime());
+            preparedStatement.setTimestamp(7, timestamp);
+            preparedStatement.setDouble(8, amount);
+        } catch (SQLException e) {
+            System.out.println("Error preparing query");
+        }
+        try {
+            preparedStatement.executeUpdate();
+            db_connection.commit();
+            System.out.println("dei commit");
+        } catch (SQLException e) {
+            e.printStackTrace();
+            System.out.println("Error executing query to insert auction into database");
+            try {
+                db_connection.rollback();
+            } catch (SQLException e1) {
+                System.out.println("Error rolling back in create_auction");
+            }
+        }
         return true;
     }
 
@@ -804,10 +848,40 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
 
     }
 
+
+    public static Connection getConnection() throws SQLException{
+
+        try {
+            Class.forName("com.mysql.jdbc.Driver");
+        } catch (ClassNotFoundException e) {
+            System.out.println("Error reading JDBC Driver");
+        }
+        String connectionString = "jdbc:mysql://localhost:3306/ibei";
+        Connection connection = DriverManager.getConnection(connectionString, "root", "ibei");
+
+        return connection;
+    }
+
     /**
      * Method to init RMIServer
      */
     public static void main(String args[]){
+
+        try {
+            db_connection = getConnection();
+            statement = db_connection.createStatement();
+            db_connection.setAutoCommit(false);
+            //preparedStatement = db_connection.prepareStatement("insert into user values ('caseiro', 'coimbra', 'active')");
+            //preparedStatement.executeUpdate();
+            resultSet = statement.executeQuery("select * from user");
+            resultSet.next();
+            String user = resultSet.getString("username");
+            db_connection.commit();
+            System.out.println(user);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
         String host_aux_rmi = "localhost";
         int port_aux_rmi=7000, port=7000;
         if (args.length==3) {
