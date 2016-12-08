@@ -4,6 +4,8 @@ import java.sql.*;
 
 import iBei.TCPServer.TCPServer;
 import iBei.Auxiliar.*;
+
+import javax.xml.transform.Result;
 import java.io.IOException;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
@@ -68,12 +70,26 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     /**
      * Method to check if a username is available
      */
+
     private boolean checkUsernameAvailability(String username){
-        for (User u:users){
-            if (u.getUsername().equals(username)){
+
+        ResultSet rs;
+        try {
+            preparedStatement = db_connection.prepareStatement("select username from user u where u.username = ?");
+            preparedStatement.setString(1, username);
+        } catch (SQLException e) {
+            System.out.println("Error preparing query");
+        }
+        try {
+            rs = preparedStatement.executeQuery();
+            rs.next();
+            if(rs.getString("username").equals(username)){
                 return false;
             }
+        } catch (SQLException e) {
+            System.out.println("Error executing query to check username availability from database");
         }
+
         return true;
     }
 
@@ -83,9 +99,28 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     @Override
     public boolean register(String username, String password) throws RemoteException {
         if (checkUsernameAvailability(username)){
-            User new_user = new User(username, password);
-            users.add(new_user);
-            saveUsers();
+            try {
+                preparedStatement = db_connection.prepareStatement("insert into user (username, password, state) values (?, ?, ?)");
+                preparedStatement.setString(1, username);
+                preparedStatement.setString(2, password);
+                preparedStatement.setString(3, "active");
+                System.out.println("preparei a query para criar novo user");
+            } catch (SQLException e) {
+                System.out.println("Error preparing query");
+            }
+            try {
+                preparedStatement.executeUpdate();
+                db_connection.commit();
+                System.out.println("dei commit");
+            } catch (SQLException e) {
+                e.printStackTrace();
+                System.out.println("Error executing query to insert user into database");
+                try {
+                    db_connection.rollback();
+                } catch (SQLException e1) {
+                    System.out.println("Error rolling back in register");
+                }
+            }
             return true;
         } else {
             return false;
@@ -96,12 +131,26 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
      * Method to check if username and password are valid
      */
     private boolean checkCredentials(String username, String password){
-        for (User u : users){
-            if (u.getUsername().equals(username) && u.getState().equals("active")){
-                return u.getPassword().equals(password);
-            }
+
+        ResultSet rs;
+        try {
+            preparedStatement = db_connection.prepareStatement("select state from user u where u.username = ? and u.password = ?");
+            preparedStatement.setString(1, username);
+            preparedStatement.setString(2, password);
+        } catch (SQLException e) {
+            System.out.println("Error preparing query");
         }
-        return false; //username not found
+        try {
+            rs = preparedStatement.executeQuery();
+            rs.next();
+            System.out.println(rs.getString("state"));
+            if(rs.getString("state").equals("active")){
+                return true;
+            }
+        } catch (SQLException e) {
+            System.out.println("Error executing query to select user from database");
+        }
+        return false; //username and/or password not found
     }
 
     /**
@@ -119,31 +168,16 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         return online_users.containsKey(username);
     }
 
-    /**
-     * Method to check if user isn't banned
-     */
-    public boolean checkIfUserNotBanned(String username){
-        for(User u : users){
-            if(u.getUsername().equals(username)){
-                if(u.getState().equals("active")){
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
 
     /**
      * Method to login a user
      */
     @Override
     public boolean login(String username, String password, String tcp_host_port) throws RemoteException {
-        if(checkIfUserNotBanned(username)){
-            if(!userAlreadyLogged(username)){
-                if(checkCredentials(username, password)){
-                    addOnlineUser(username,tcp_host_port);
-                    return true;
-                }
+        if(!userAlreadyLogged(username)){
+            if(checkCredentials(username, password)){
+                addOnlineUser(username,tcp_host_port);
+                return true;
             }
         }
         return false;
@@ -178,7 +212,6 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     synchronized public boolean create_auction(String owner, String code, String title, String description, Date deadline, double amount) throws RemoteException {
         Auction new_auc = new Auction(owner, code, title, description, deadline, amount);
         auctions.add(new_auc);
-        // PreparedStatements can use variables and are more efficient
         try {
             preparedStatement = db_connection.prepareStatement("insert into auction (username, state, code, title, description, created_date, deadline, amount) values (?, ?, ?, ?, ?, ?, ?, ?)");
             preparedStatement.setString(1, owner);
@@ -197,9 +230,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         try {
             preparedStatement.executeUpdate();
             db_connection.commit();
-            System.out.println("dei commit");
         } catch (SQLException e) {
-            e.printStackTrace();
             System.out.println("Error executing query to insert auction into database");
             try {
                 db_connection.rollback();
@@ -216,25 +247,151 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     @Override
     public ArrayList<Auction> search_auction(String code) throws RemoteException {
         ArrayList<Auction> auctions_found = new ArrayList<>();
-        for (Auction a:auctions){
-            if (a.getCode().equals(code)){
-                auctions_found.add(a);
-            }
+        ResultSet rs;
+        try {
+            preparedStatement = db_connection.prepareStatement("select * from auction a where a.code = ?");
+            preparedStatement.setString(1, code);
+        } catch (SQLException e) {
+            System.out.println("Error preparing query");
         }
+        try {
+            rs = preparedStatement.executeQuery();
+            while(rs.next()){
+                auctions_found.add(new Auction(rs.getString("username"), rs.getString("code"), rs.getString("title"),
+                        rs.getString("description"), new Date(rs.getTimestamp("deadline").getTime()), rs.getDouble("amount")));
+            }
+        } catch (SQLException e) {
+            System.out.println("Error executing query to select auction by code from database");
+        }
+
         return auctions_found;
     }
+    
+    
+    private ResultSet get_auction_messages(int id){
+        
+        ResultSet rs = null;
+
+        try {
+            preparedStatement = db_connection.prepareStatement("select COUNT(*) total_messages, m.username username, m.text text from (SELECT m.username, m.text FROM message m WHERE m.auction_id = ?) aux, message m group by m.username, m.text");
+            preparedStatement.setInt(1, id);
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        try {
+            rs = preparedStatement.executeQuery();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return rs;
+    }
+
+    private ResultSet get_auction_bids(int id){
+
+        ResultSet rs = null;
+
+        try {
+            preparedStatement = db_connection.prepareStatement("select COUNT(*) total_bids, b.username username, b.amount amount from (SELECT b.username, b.amount FROM bid b WHERE b.auction_id = ?) aux, bid b group by b.username, b.amount");
+            preparedStatement.setInt(1, id);
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        try {
+            rs = preparedStatement.executeQuery();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return rs;
+    }
+
 
     /**
      * Method to searh for an auction by id
      */
     @Override
     public Auction detail_auction(int id) throws RemoteException {
-        for (Auction a:auctions){
-            if (a.getID()==id){
-                return a;
-            }
+
+        ResultSet rs = null, messages, bids;
+        Auction auction = null;
+
+        try {
+            preparedStatement = db_connection.prepareStatement("SELECT * FROM auction WHERE auction.id = ?;");
+            preparedStatement.setInt(1, id);
+        } catch (SQLException e) {
+            System.out.println("Error preparing query");
         }
-        return null;
+        try {
+            rs = preparedStatement.executeQuery();
+            rs.next();
+            if(rs == null) return null;
+            auction = new Auction(rs.getString("username"), rs.getString("code"), rs.getString("title"), rs.getString("description"),
+                    new Date(rs.getTimestamp("deadline").getTime()), rs.getDouble("amount"));
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        messages = get_auction_messages(id);
+        bids = get_auction_bids(id);
+
+        try {
+            while(messages.next()){
+                auction.addMsg(messages.getString("username"), messages.getString("text"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        try {
+            while(bids.next()){
+                auction.addBid(bids.getString("username"), bids.getDouble("amount"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return auction;
+
+        /*
+        String a = "";
+        String b = "";
+        int messages_count = 0;
+        int bids_count = 0;
+        int i = 0;
+        try {
+            while (messages.next()) {
+                messages_count = messages.getInt("total_messages");
+                String user = ", messages_" + String.valueOf(i) + "_user: " + messages.getString("username");
+                String msg = ", messages_" + String.valueOf(i) + "_text: " + messages.getString("text");
+                a += user + msg;
+                i++;
+            }
+        } catch (SQLException e1) {
+            System.out.println("parti-me no messages.next()");
+        }
+
+        int j = 0;
+        try {
+            while (bids.next()) {
+                bids_count = bids.getInt("total_bids");
+                String user = ", bids_" + String.valueOf(j) + "_user: " + bids.getString("username");
+                String amount = ", bids_" + String.valueOf(j) + "_amount: " + String.valueOf(bids.getDouble("amount"));
+                b += user + amount;
+                j++;
+            }
+
+            String aux_details = "code: " + rs.getString("code") + ", title: " + rs.getString("title") + ", description: " + rs.getString("description") + ", amount: " +
+                    rs.getDouble("amount") + ", deadline: " + new Date(rs.getTimestamp("deadline").getTime()).toString() + ", messages_count: " + String.valueOf(messages_count);
+
+            aux_details += a;
+
+            aux_details += ", bids_count: " + String.valueOf(bids_count);
+            aux_details += b;
+
+            return aux_details;
+
+        } catch (SQLException e) {
+            System.out.println("Error executing query to select auction by code from database");
+        }*/
     }
 
     /**
@@ -243,11 +400,24 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     @Override
     public ArrayList<Auction> my_auctions(String username) throws RemoteException {
         ArrayList<Auction> user_aucs = new ArrayList<>();
-        for (Auction a : auctions){
-            if (a.getOwner().equals(username) || a.checkUserBidActivity(username) || a.checkUserMessageActivity(username)){
-                user_aucs.add(a);
-            }
+
+        ResultSet rs;
+        try {
+            preparedStatement = db_connection.prepareStatement("select * from auction a where a.username = ?");
+            preparedStatement.setString(1, username);
+        } catch (SQLException e) {
+            System.out.println("Error preparing query");
         }
+        try {
+            rs = preparedStatement.executeQuery();
+            while(rs.next()){
+                user_aucs.add(new Auction(rs.getString("username"), rs.getString("code"), rs.getString("title"),
+                        rs.getString("description"), new Date(rs.getTimestamp("deadline").getTime()), rs.getDouble("amount")));
+            }
+        } catch (SQLException e) {
+            System.out.println("Error executing query to select auction by code from database");
+        }
+
         return user_aucs;
     }
 
@@ -256,23 +426,52 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
      */
     @Override
     public boolean bid(int id, String username, double amount) throws RemoteException {
-        for (Auction a:auctions){
-            if(a.getID()==id && a.getState().equals("active")){
-                String usertonotify = a.getUsernameLastBid();
-                int nbids = a.getNumberBids();
 
-                if(a.addBid(username,amount)) {
-                    if (!usertonotify.equals(a.getOwner())){
-                        String note = "type: notification_bid, id: " + id + ", user: " + username + ", amount: " + amount;
-                        notifications.add(new AbstractMap.SimpleEntry<>(a.getOwner(), note));
-                    }
-                    if (nbids>0) {
-                        String note = "type: notification_bid, id: " + id + ", user: " + username + ", amount: " + amount;
-                        notifications.add(new AbstractMap.SimpleEntry<>(usertonotify, note));
-                    }
-                    saveAuctions();
-                    return true;
+        PreparedStatement ps = null;
+        String userToNotify = "";
+        String owner = "";
+        boolean bids = false;
+
+        try {
+            ps = db_connection.prepareStatement("SELECT a.username owner, b.amount amount, b.username username FROM bid b, auction a WHERE b.bid_date = (SELECT MAX(bid_date) FROM bid WHERE auction_id = ?) AND a.id = b.auction_id AND a.state = 'active'");
+
+            ps.setInt(1, id);
+            resultSet = ps.executeQuery();
+            resultSet.next();
+            if(resultSet != null) bids = true;
+            userToNotify = resultSet.getString("username");
+            owner = resultSet.getString("owner");
+
+        } catch (SQLException e) {
+            System.out.println("Error preparing query");
+        }
+        try {
+            if(resultSet.getDouble("amount") > amount){
+                preparedStatement = db_connection.prepareStatement("INSERT INTO bid (auction_id, username, bid_date, amount) VALUES (?, ?, ?, ?)");
+                preparedStatement.setInt(1, id);
+                preparedStatement.setString(2, username);
+                java.sql.Timestamp date = new java.sql.Timestamp(new java.util.Date().getTime());
+                preparedStatement.setTimestamp(3, date);
+                preparedStatement.setDouble(4, amount);
+                preparedStatement.executeUpdate();
+                db_connection.commit();
+
+                if (!userToNotify.equals(owner)){
+                    String note = "type: notification_bid, id: " + id + ", user: " + username + ", amount: " + amount;
+                    notifications.add(new AbstractMap.SimpleEntry<>(owner, note));
                 }
+                if (bids) {
+                    String note = "type: notification_bid, id: " + id + ", user: " + username + ", amount: " + amount;
+                    notifications.add(new AbstractMap.SimpleEntry<>(userToNotify, note));
+                }
+                return true;
+            }
+        } catch (SQLException e) {
+            System.out.println("Error executing query to insert auction into database");
+            try {
+                db_connection.rollback();
+            } catch (SQLException e1) {
+                System.out.println("Error rolling back in create_auction");
             }
         }
         return false;
@@ -792,10 +991,6 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
             rmiServer = new RMIServerImpl();
             r = LocateRegistry.createRegistry(port);
             r.rebind("iBei", rmiServer);
-            rmiServer.loadAuctions();
-            rmiServer.loadUsers();
-            rmiServer.loadOnlineUsers();
-            rmiServer.loadNotifications();
 
             // Thread para acabar com leilões à hora certa
             new Thread() {
