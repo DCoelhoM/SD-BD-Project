@@ -28,11 +28,10 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     private Map<String,TCPServer> connected_TCPs; //{TCP_Host:Port, TCPServer}
     private List<Map.Entry<String,String>> notifications; //{Username, Message}
 
-
-    private static Connection db_connection = null;
     private static Statement statement = null;
     private static ResultSet resultSet = null;
     private static PreparedStatement preparedStatement = null;
+    private static ConnectionPoolManager connectionPoolManager;
 
 
 
@@ -74,6 +73,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     private boolean checkUsernameAvailability(String username){
 
         ResultSet rs;
+
+        Connection db_connection = connectionPoolManager.getConnectionFromPool();
+
         try {
             preparedStatement = db_connection.prepareStatement("select username from user u where u.username = ?");
             preparedStatement.setString(1, username);
@@ -84,12 +86,15 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
             rs = preparedStatement.executeQuery();
             rs.next();
             if(rs.getString("username").equals(username)){
+
+                connectionPoolManager.returnConnectionToPool(db_connection);
                 return false;
             }
         } catch (SQLException e) {
             System.out.println("Error executing query to check username availability from database");
         }
 
+        connectionPoolManager.returnConnectionToPool(db_connection);
         return true;
     }
 
@@ -98,6 +103,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
      */
     @Override
     public boolean register(String username, String password) throws RemoteException {
+
+        Connection db_connection = connectionPoolManager.getConnectionFromPool();
+
         if (checkUsernameAvailability(username)){
             try {
                 preparedStatement = db_connection.prepareStatement("insert into user (username, password, state) values (?, ?, ?)");
@@ -121,8 +129,10 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
                     System.out.println("Error rolling back in register");
                 }
             }
+            connectionPoolManager.returnConnectionToPool(db_connection);
             return true;
         } else {
+            connectionPoolManager.returnConnectionToPool(db_connection);
             return false;
         }
     }
@@ -133,6 +143,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     private boolean checkCredentials(String username, String password){
 
         ResultSet rs;
+
+        Connection db_connection = connectionPoolManager.getConnectionFromPool();
+
         try {
             preparedStatement = db_connection.prepareStatement("select state from user u where u.username = ? and u.password = ?");
             preparedStatement.setString(1, username);
@@ -143,13 +156,15 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         try {
             rs = preparedStatement.executeQuery();
             rs.next();
-            System.out.println(rs.getString("state"));
             if(rs.getString("state").equals("active")){
+                connectionPoolManager.returnConnectionToPool(db_connection);
                 return true;
             }
         } catch (SQLException e) {
             System.out.println("Error executing query to select user from database");
         }
+
+        connectionPoolManager.returnConnectionToPool(db_connection);
         return false; //username and/or password not found
     }
 
@@ -212,6 +227,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     synchronized public boolean create_auction(String owner, String code, String title, String description, Date deadline, double amount) throws RemoteException {
         Auction new_auc = new Auction(owner, code, title, description, deadline, amount);
         auctions.add(new_auc);
+
+        Connection db_connection = connectionPoolManager.getConnectionFromPool();
+
         try {
             preparedStatement = db_connection.prepareStatement("insert into auction (username, state, code, title, description, created_date, deadline, amount) values (?, ?, ?, ?, ?, ?, ?, ?)");
             preparedStatement.setString(1, owner);
@@ -238,6 +256,8 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
                 System.out.println("Error rolling back in create_auction");
             }
         }
+
+        connectionPoolManager.returnConnectionToPool(db_connection);
         return true;
     }
 
@@ -248,6 +268,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     public ArrayList<Auction> search_auction(String code) throws RemoteException {
         ArrayList<Auction> auctions_found = new ArrayList<>();
         ResultSet rs;
+
+        Connection db_connection = connectionPoolManager.getConnectionFromPool();
+
         try {
             preparedStatement = db_connection.prepareStatement("select * from auction a where a.code = ?");
             preparedStatement.setString(1, code);
@@ -264,6 +287,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
             System.out.println("Error executing query to select auction by code from database");
         }
 
+        connectionPoolManager.returnConnectionToPool(db_connection);
         return auctions_found;
     }
     
@@ -271,6 +295,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     private ResultSet get_auction_messages(int id){
         
         ResultSet rs = null;
+
+        Connection db_connection = connectionPoolManager.getConnectionFromPool();
+
 
         try {
             preparedStatement = db_connection.prepareStatement("select COUNT(*) total_messages, m.username username, m.text text from (SELECT m.username, m.text FROM message m WHERE m.auction_id = ?) aux, message m group by m.username, m.text");
@@ -284,12 +311,17 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         } catch (SQLException e) {
             e.printStackTrace();
         }
+
+        connectionPoolManager.returnConnectionToPool(db_connection);
         return rs;
     }
 
     private ResultSet get_auction_bids(int id){
 
         ResultSet rs = null;
+
+        Connection db_connection = connectionPoolManager.getConnectionFromPool();
+
 
         try {
             preparedStatement = db_connection.prepareStatement("select COUNT(*) total_bids, b.username username, b.amount amount from (SELECT b.username, b.amount FROM bid b WHERE b.auction_id = ?) aux, bid b group by b.username, b.amount");
@@ -303,6 +335,8 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         } catch (SQLException e) {
             e.printStackTrace();
         }
+
+        connectionPoolManager.returnConnectionToPool(db_connection);
         return rs;
     }
 
@@ -315,6 +349,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
 
         ResultSet rs = null, messages, bids;
         Auction auction = null;
+
+        Connection db_connection = connectionPoolManager.getConnectionFromPool();
+
 
         try {
             preparedStatement = db_connection.prepareStatement("SELECT * FROM auction WHERE auction.id = ?;");
@@ -349,49 +386,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         } catch (SQLException e) {
             e.printStackTrace();
         }
+
+        connectionPoolManager.returnConnectionToPool(db_connection);
         return auction;
-
-        /*
-        String a = "";
-        String b = "";
-        int messages_count = 0;
-        int bids_count = 0;
-        int i = 0;
-        try {
-            while (messages.next()) {
-                messages_count = messages.getInt("total_messages");
-                String user = ", messages_" + String.valueOf(i) + "_user: " + messages.getString("username");
-                String msg = ", messages_" + String.valueOf(i) + "_text: " + messages.getString("text");
-                a += user + msg;
-                i++;
-            }
-        } catch (SQLException e1) {
-            System.out.println("parti-me no messages.next()");
-        }
-
-        int j = 0;
-        try {
-            while (bids.next()) {
-                bids_count = bids.getInt("total_bids");
-                String user = ", bids_" + String.valueOf(j) + "_user: " + bids.getString("username");
-                String amount = ", bids_" + String.valueOf(j) + "_amount: " + String.valueOf(bids.getDouble("amount"));
-                b += user + amount;
-                j++;
-            }
-
-            String aux_details = "code: " + rs.getString("code") + ", title: " + rs.getString("title") + ", description: " + rs.getString("description") + ", amount: " +
-                    rs.getDouble("amount") + ", deadline: " + new Date(rs.getTimestamp("deadline").getTime()).toString() + ", messages_count: " + String.valueOf(messages_count);
-
-            aux_details += a;
-
-            aux_details += ", bids_count: " + String.valueOf(bids_count);
-            aux_details += b;
-
-            return aux_details;
-
-        } catch (SQLException e) {
-            System.out.println("Error executing query to select auction by code from database");
-        }*/
     }
 
     /**
@@ -402,6 +399,8 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         ArrayList<Auction> user_aucs = new ArrayList<>();
 
         ResultSet rs;
+        Connection db_connection = connectionPoolManager.getConnectionFromPool();
+
         try {
             preparedStatement = db_connection.prepareStatement("select * from auction a where a.username = ?");
             preparedStatement.setString(1, username);
@@ -418,6 +417,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
             System.out.println("Error executing query to select auction by code from database");
         }
 
+        connectionPoolManager.returnConnectionToPool(db_connection);
         return user_aucs;
     }
 
@@ -431,6 +431,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         String userToNotify = "";
         String owner = "";
         boolean bids = false;
+        Connection db_connection = connectionPoolManager.getConnectionFromPool();
 
         try {
             ps = db_connection.prepareStatement("SELECT a.username owner, b.amount amount, b.username username FROM bid b, auction a WHERE b.bid_date = (SELECT MAX(bid_date) FROM bid WHERE auction_id = ?) AND a.id = b.auction_id AND a.state = 'active'");
@@ -447,6 +448,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         }
         try {
             if(resultSet.getDouble("amount") > amount){
+                // TODO: passar amount como parâmetro para tirar este if
                 preparedStatement = db_connection.prepareStatement("INSERT INTO bid (auction_id, username, bid_date, amount) VALUES (?, ?, ?, ?)");
                 preparedStatement.setInt(1, id);
                 preparedStatement.setString(2, username);
@@ -464,6 +466,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
                     String note = "type: notification_bid, id: " + id + ", user: " + username + ", amount: " + amount;
                     notifications.add(new AbstractMap.SimpleEntry<>(userToNotify, note));
                 }
+                connectionPoolManager.returnConnectionToPool(db_connection);
                 return true;
             }
         } catch (SQLException e) {
@@ -474,6 +477,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
                 System.out.println("Error rolling back in create_auction");
             }
         }
+        connectionPoolManager.returnConnectionToPool(db_connection);
         return false;
     }
 
@@ -482,6 +486,45 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
      */
     @Override
     public boolean edit_auction(String username, int id, HashMap<String,String> data) throws RemoteException {
+
+        PreparedStatement ps = null;
+
+        Connection db_connection = connectionPoolManager.getConnectionFromPool();
+
+        try {
+            ps = db_connection.prepareStatement("SELECT a.username owner, b.amount amount, b.username username FROM bid b, auction a WHERE b.bid_date = (SELECT MAX(bid_date) FROM bid WHERE auction_id = ?) AND a.id = b.auction_id AND a.state = 'active'");
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        try {
+            preparedStatement = db_connection.prepareStatement("");
+            preparedStatement.setString(1, owner);
+            preparedStatement.setString(2, "active");
+            preparedStatement.setString(3, code);
+            preparedStatement.setString(4, title);
+            preparedStatement.setString(5, description);
+            java.sql.Timestamp date = new java.sql.Timestamp(new java.util.Date().getTime());
+            preparedStatement.setTimestamp(6, date);
+            Timestamp timestamp = new Timestamp(deadline.getTime());
+            preparedStatement.setTimestamp(7, timestamp);
+            preparedStatement.setDouble(8, amount);
+        } catch (SQLException e) {
+            System.out.println("Error preparing query");
+        }
+        try {
+            preparedStatement.executeUpdate();
+            db_connection.commit();
+        } catch (SQLException e) {
+            System.out.println("Error executing query to insert auction into database");
+            try {
+                db_connection.rollback();
+            } catch (SQLException e1) {
+                System.out.println("Error rolling back in create_auction");
+            }
+        }
+
+
         for (Auction a : auctions){
             if (a.getID()==id && a.getOwner().equals(username)){
                 a.setPrevious_auction_data("title: " + a.getTitle() + ", code: " + a.getCode() + ", description: " + a.getDescription() + ", deadline: " + a.getDeadline() + ", amount: " + a.getAmount());
@@ -638,7 +681,6 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     @Override
     public boolean cancel_auction(int id) throws RemoteException {
         for (Auction a:auctions){
-            System.out.println("auction tem id" + a.getID());
             if (a.getID()==id && a.getState().equals("active")){
                 a.cancelAuction();
                 saveAuctions();
@@ -996,7 +1038,6 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
             new Thread() {
                 public void run() {
                     while(true) {
-                        System.out.println("Chamei o end auctions");
                         rmiServer.end_auctions();
                         try {
                             Thread.sleep(40000);
@@ -1044,7 +1085,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     }
 
 
-    public static Connection getConnection() throws SQLException{
+    /*public static Connection getConnection() throws SQLException{
 
         try {
             Class.forName("com.mysql.jdbc.Driver");
@@ -1055,27 +1096,18 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         Connection connection = DriverManager.getConnection(connectionString, "root", "ibei");
 
         return connection;
-    }
+    }*/
 
     /**
      * Method to init RMIServer
      */
     public static void main(String args[]){
 
-        try {
-            db_connection = getConnection();
-            statement = db_connection.createStatement();
-            db_connection.setAutoCommit(false);
-            //preparedStatement = db_connection.prepareStatement("insert into user values ('caseiro', 'coimbra', 'active')");
-            //preparedStatement.executeUpdate();
-            resultSet = statement.executeQuery("select * from user");
-            resultSet.next();
-            String user = resultSet.getString("username");
-            db_connection.commit();
-            System.out.println(user);
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+        connectionPoolManager = new ConnectionPoolManager();
+
+        /*db_connection = getConnection();
+        statement = db_connection.createStatement();
+        db_connection.setAutoCommit(false);*/
 
         String host_aux_rmi = "localhost";
         int port_aux_rmi=7000, port=7000;
@@ -1090,5 +1122,91 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         } catch (RemoteException | NotBoundException e) {
             rmiStart(port);
         }
+    }
+}
+
+
+class ConnectionPoolManager{
+
+    String databaseUrl = "jdbc:mysql://localhost:3306/ibei";
+    String userName = "root";
+    String password = "ibei";
+
+    Vector connectionPool = new Vector();
+
+    public ConnectionPoolManager(){
+        initialize();
+    }
+
+    public ConnectionPoolManager(String databaseUrl, String userName, String password){
+        this.databaseUrl = databaseUrl;
+        this.userName = userName;
+        this.password = password;
+        initialize();
+    }
+
+    private void initialize() {
+        //Here we can initialize all the information that we need
+        initializeConnectionPool();
+    }
+
+    private void initializeConnectionPool() {
+        while(!checkIfConnectionPoolIsFull()) {
+            System.out.println("Connection Pool is NOT full. Proceeding with adding new connections");
+            //Adding new connection instance until the pool is full
+            connectionPool.addElement(createNewConnectionForPool());
+        }
+        System.out.println("Connection Pool is full.");
+    }
+
+    private synchronized boolean checkIfConnectionPoolIsFull() {
+        final int MAX_POOL_SIZE = 5;
+
+        //Check if the pool size
+        if(connectionPool.size() < MAX_POOL_SIZE) {
+            return false;
+        }
+        return true;
+    }
+
+    //Creating a connection
+    private Connection createNewConnectionForPool() {
+        Connection connection = null;
+
+        try {
+            Class.forName("com.mysql.jdbc.Driver");
+            connection = DriverManager.getConnection(databaseUrl, userName, password);
+            connection.setAutoCommit(false);
+            System.out.println("Connection: "+connection);
+        }
+        catch(SQLException sqle) {
+            System.err.println("SQLException: "+sqle);
+            return null;
+        }
+        catch(ClassNotFoundException cnfe) {
+            System.err.println("ClassNotFoundException: "+cnfe);
+            return null;
+        }
+
+        return connection;
+    }
+
+    public synchronized Connection getConnectionFromPool() {
+        Connection connection = null;
+
+        //Check if there is a connection available. There are times when all the connections in the pool may be used up
+        if(connectionPool.size() == 0){
+            createNewConnectionForPool();
+        }
+        connection = (Connection) connectionPool.firstElement();
+        connectionPool.removeElementAt(0);
+
+        //Giving away the connection from the connection pool
+        return connection;
+    }
+
+    public synchronized void returnConnectionToPool(Connection connection) {
+        //Adding the connection from the client back to the connection pool
+        connectionPool.addElement(connection);
     }
 }
