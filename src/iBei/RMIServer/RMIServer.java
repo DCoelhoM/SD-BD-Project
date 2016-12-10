@@ -19,6 +19,7 @@ public interface RMIServer extends java.rmi.Remote {
     boolean userAlreadyLogged(String username) throws java.rmi.RemoteException;
 
     //AUCTIONS
+    public void checkIfThereAreMessagesForUser(String username) throws  java.rmi.RemoteException;
     boolean create_auction(String owner, String code, String title, String description, Date deadline, double amount) throws java.rmi.RemoteException;
     ArrayList<Auction> search_auction(String code) throws java.rmi.RemoteException;
     Auction detail_auction(int id) throws java.rmi.RemoteException;
@@ -28,9 +29,11 @@ public interface RMIServer extends java.rmi.Remote {
     boolean message(int auction_id, String name, String msg) throws java.rmi.RemoteException;
     ArrayList<String> online_users() throws java.rmi.RemoteException;
 
-    void sendNotification(String type) throws java.rmi.RemoteException;
+    //void sendNotification(String type) throws java.rmi.RemoteException;
 
-    //ADMIN
+    void checkIfThereAreNotificationsForUser(String username) throws java.rmi.RemoteException;
+
+        //ADMIN
     boolean cancel_auction(int id) throws java.rmi.RemoteException;
     boolean ban_user(String username) throws java.rmi.RemoteException;
     Map mostAuctionsUsers() throws java.rmi.RemoteException;

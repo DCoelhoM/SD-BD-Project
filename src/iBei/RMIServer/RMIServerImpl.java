@@ -192,6 +192,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         if(!userAlreadyLogged(username)){
             if(checkCredentials(username, password)){
                 addOnlineUser(username,tcp_host_port);
+                System.out.println("user logou e adicionei aos online users");
                 return true;
             }
         }
@@ -203,6 +204,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
      */
     @Override
     public boolean logout(String username) throws RemoteException {
+        System.out.println("user logou e removi dos online users");
         return removeOnlineUser(username);
     }
 
@@ -422,13 +424,16 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     }
 
 
-    private boolean insertIntoBidNotification(Connection db_connection, String username, int bid_id){
+    private boolean insertIntoBidNotification(String username, int bid_id){
+        Connection db_connection = connectionPoolManager.getConnectionFromPool();
+
+        PreparedStatement ps = null;
 
         try {
-            preparedStatement = db_connection.prepareStatement("INSERT INTO bid_notification (bid_id, username) VALUES (?, ?)");
-            preparedStatement.setInt(1, bid_id);
-            preparedStatement.setString(2, username);
-            preparedStatement.executeUpdate();
+            ps = db_connection.prepareStatement("INSERT INTO bid_notification (bid_id, username) VALUES (?, ?)");
+            ps.setInt(1, bid_id);
+            ps.setString(2, username);
+            ps.executeUpdate();
             db_connection.commit();
             connectionPoolManager.returnConnectionToPool(db_connection);
             return true;
@@ -438,80 +443,39 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
             return false;
         }
     }
-    /**
-     * Method to bid on a specific auction
-     */
-    @Override
-    public boolean bid(int id, String username, double amount) throws RemoteException {
 
-        PreparedStatement ps = null;
-        String userToNotify = "";
-        String owner = "";
-        boolean bids = false;
-        int bid_id = 0;
+
+
+
+    private boolean insertIntoMessageNotification(String username, int message_id){
         Connection db_connection = connectionPoolManager.getConnectionFromPool();
+        System.out.println("entrei np insertInto!!!!!!!!----------");
+        PreparedStatement ps;
 
         try {
-            ps = db_connection.prepareStatement("SELECT a.username owner, b.amount amount, b.username username, b.id bid_id FROM bid b, auction a WHERE b.bid_date = (SELECT MAX(bid_date) FROM bid WHERE auction_id = ?) AND a.id = b.auction_id AND a.state = 'active'");
+            ps = db_connection.prepareStatement("INSERT INTO message_notification (message_id, username) VALUES (?, ?)");
+            ps.setInt(1, message_id);
+            System.out.println(" o message_id é : " + message_id );
+            ps.setString(2, username);
+            System.out.println(" o username é : " + username);
 
-            ps.setInt(1, id);
-
-            resultSet = ps.executeQuery();
-            if(resultSet.isBeforeFirst()) {
-                resultSet.next();
-                bids = true;
-                userToNotify = resultSet.getString("username");
-                owner = resultSet.getString("owner");
-                bid_id = resultSet.getInt("bid_id") + 1;
-            }
-
+            ps.executeUpdate();
+            db_connection.commit();
+            System.out.println("dei commit!");
+            connectionPoolManager.returnConnectionToPool(db_connection);
+            return true;
         } catch (SQLException e) {
             e.printStackTrace();
-            System.out.println("Error preparing query");
-        }
-        try {
-            if(!bids || resultSet.getDouble("amount") > amount){
-                // TODO: passar amount como parâmetro para tirar este if
-                preparedStatement = db_connection.prepareStatement("INSERT INTO bid (auction_id, username, bid_date, amount) VALUES (?, ?, ?, ?)");
-                preparedStatement.setInt(1, id);
-                preparedStatement.setString(2, username);
-                java.sql.Timestamp date = new java.sql.Timestamp(new java.util.Date().getTime());
-                preparedStatement.setTimestamp(3, date);
-                preparedStatement.setDouble(4, amount);
-                preparedStatement.executeUpdate();
-                db_connection.commit();
-
-                if (!userToNotify.equals(owner)){
-                    if (!bids){
-                        ps = db_connection.prepareStatement("SELECT username owner from auction where id = ?");
-                        ps.setInt(1, id);
-                        resultSet = ps.executeQuery();
-                        resultSet.next();
-                        owner = resultSet.getNString("owner");
-                    }
-                    insertIntoBidNotification(db_connection, owner, 1);
-                }
-                if (bids) {
-                    insertIntoBidNotification(db_connection, userToNotify, bid_id);
-                }
-                connectionPoolManager.returnConnectionToPool(db_connection);
-                return true;
-            }
-        } catch (SQLException e) {
-            System.out.println("Error executing query to insert bid into database");
             try {
                 db_connection.rollback();
             } catch (SQLException e1) {
-                System.out.println("Error rolling back in create_auction");
+                e1.printStackTrace();
             }
+            connectionPoolManager.returnConnectionToPool(db_connection);
+            return false;
         }
-        connectionPoolManager.returnConnectionToPool(db_connection);
-        return false;
     }
 
-    /**
-     * Method to edit various or a specific attribute of an auction
-     */
     @Override
     public boolean edit_auction(String username, int id, HashMap<String,String> data) throws RemoteException {
 
@@ -637,138 +601,340 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     }
 
 
-    private ResultSet getBids(){
+    /**
+     * Method to bid on a specific auction
+     */
+    @Override
+
+    public boolean bid(int auction_id, String bidder, double amount) throws RemoteException {
         PreparedStatement ps = null;
+        PreparedStatement queryToInsertBid = null;
         Connection db_connection = connectionPoolManager.getConnectionFromPool();
+        ResultSet last_bid;
+        ResultSet get_owner;
+        String auction_owner;
+        String userWhoIsWinning;
+        double last_bid_amount;
+        double initial_amount;
+        int last_bid_id;
+        String host_port;
+        int bid_id_after_insert;
 
         try {
-            ps = db_connection.prepareStatement("SELECT bn.bid_id bid_id, bn.username username, b.amount amount, b.username bidder, b.auction_id FROM bid_notification bn, bid b where bn.bid_id = b.id");
-            resultSet = ps.executeQuery();
+            ps = db_connection.prepareStatement("SELECT a.username owner, b.amount amount, b.username username, b.id bid_id FROM bid b, auction a WHERE b.bid_date = (SELECT MAX(bid_date) FROM bid WHERE auction_id = ?) AND a.id = b.auction_id AND a.state = 'active'");
+            ps.setInt(1, auction_id);
 
+            last_bid = ps.executeQuery();
+            System.out.println("recebi a response");
+            if(last_bid.next()){ // acontece se alguém já lá tiver uma bid
+                auction_owner = last_bid.getString("owner");
+                userWhoIsWinning = last_bid.getString("username");
+                System.out.println("O user que está a ganhar e vai ser notificado é + " + userWhoIsWinning);
+                last_bid_amount = last_bid.getDouble("amount");
+                last_bid_id = last_bid.getInt("bid_id");
+
+                if(amount < last_bid_amount){ // bid válida
+                    queryToInsertBid = db_connection.prepareStatement("INSERT INTO bid (auction_id, username, bid_date, amount) values (?,?,?,?)", Statement.RETURN_GENERATED_KEYS);
+                    queryToInsertBid.setInt(1, auction_id);
+                    queryToInsertBid.setString(2, bidder);
+                    java.sql.Timestamp date = new java.sql.Timestamp(new java.util.Date().getTime());
+                    queryToInsertBid.setTimestamp(3, date);
+                    queryToInsertBid.setDouble(4, amount);
+
+                    queryToInsertBid.executeUpdate();
+
+                    ResultSet keys = queryToInsertBid.getGeneratedKeys();
+                    keys.next();
+                    bid_id_after_insert = keys.getInt(1);
+
+                    db_connection.commit();
+
+                    host_port = checkIfUserOnline(userWhoIsWinning);
+                    if(!host_port.isEmpty()){
+                        System.out.println("user que estava a ganhar está on");
+                        System.out.println(userWhoIsWinning);
+                        TCPServer tcp = getTCPbyHostPort(host_port);
+                        if(tcp != null){
+                            System.out.println("antes de note");
+                            String note = "type: notification_bid, id: " + auction_id + " user: " + bidder + " amount: " + amount;
+                            tcp.sendNotification(userWhoIsWinning, note);
+                        }
+                    } else {
+                        insertIntoBidNotification(userWhoIsWinning, bid_id_after_insert);
+                    }
+
+                    host_port = checkIfUserOnline(auction_owner);
+                    if(!host_port.isEmpty()){
+                        TCPServer tcp = getTCPbyHostPort(host_port);
+                        if(tcp != null){
+                            String note = "type: notification_bid, id: " + auction_id + " user: " + bidder + " amount: " + amount;
+                            tcp.sendNotification(auction_owner, note);
+                            connectionPoolManager.returnConnectionToPool(db_connection);
+                            return true;
+                        }
+                    } else {
+                        insertIntoBidNotification(auction_owner, bid_id_after_insert);
+                        connectionPoolManager.returnConnectionToPool(db_connection);
+                        return true;
+                    }
+                }
+            } else {
+                ps = db_connection.prepareStatement("SELECT username owner, amount initial_amount FROM auction WHERE id = ?");
+                ps.setInt(1, auction_id);
+                System.out.println(auction_id);
+
+                get_owner = ps.executeQuery();
+                get_owner.next();
+                auction_owner = get_owner.getString("owner");
+                initial_amount = get_owner.getDouble("initial_amount");
+
+                if(amount < initial_amount){
+                    queryToInsertBid = db_connection.prepareStatement("INSERT INTO bid (auction_id, username, bid_date, amount) values (?,?,?,?)", Statement.RETURN_GENERATED_KEYS);
+                    queryToInsertBid.setInt(1, auction_id);
+                    queryToInsertBid.setString(2, bidder);
+                    java.sql.Timestamp date = new java.sql.Timestamp(new java.util.Date().getTime());
+                    queryToInsertBid.setTimestamp(3, date);
+                    queryToInsertBid.setDouble(4, amount);
+
+                    queryToInsertBid.executeUpdate();
+
+                    ResultSet keys = queryToInsertBid.getGeneratedKeys();
+                    keys.next();
+                    bid_id_after_insert = keys.getInt(1);
+
+                    db_connection.commit();
+
+                    host_port = checkIfUserOnline(auction_owner);
+                    if(!host_port.isEmpty()){
+                        TCPServer tcp = getTCPbyHostPort(host_port);
+                        if(tcp != null){
+                            String note = "type: notification_bid, id: " + auction_id + " user: " + bidder + " amount: " + amount;
+                            tcp.sendNotification(auction_owner, note);
+                            connectionPoolManager.returnConnectionToPool(db_connection);
+                            return true;
+                        }
+                    } else {
+                        insertIntoBidNotification(auction_owner, bid_id_after_insert);
+                        connectionPoolManager.returnConnectionToPool(db_connection);
+                        return true;
+                    }
+
+                }
+            }
         } catch (SQLException e) {
             e.printStackTrace();
         }
         connectionPoolManager.returnConnectionToPool(db_connection);
-        return resultSet;
+        return false;
     }
 
-    private void removeBidsNotifications(int bid_id){
-        PreparedStatement ps = null;
+    public boolean message(int auction_id, String messager, String text) throws RemoteException {
+        PreparedStatement ps;
         Connection db_connection = connectionPoolManager.getConnectionFromPool();
+        int response;
+        ResultSet responseUsers;
+        String userToNotify = "";
+        String host_port = "";
+        int bid_message;
 
         try {
-            System.out.println("apagar das bids notifications");
-            ps = db_connection.prepareStatement("DELETE FROM bid_notification WHERE bid_id = ?");
-            ps.setInt(1, bid_id);
-            ps.executeUpdate();
-            db_connection.commit();
+            ps = db_connection.prepareStatement("INSERT INTO message (auction_id, username, message_date, text) VALUES (?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
 
+            ps.setInt(1, auction_id);
+            ps.setString(2, messager);
+            java.sql.Timestamp date = new java.sql.Timestamp(new java.util.Date().getTime());
+            ps.setTimestamp(3, date);
+            ps.setString(4, text);
+
+            response = ps.executeUpdate();
+            db_connection.commit();
+            ResultSet keys = ps.getGeneratedKeys();
+            keys.next();
+            bid_message = keys.getInt(1);
+
+
+            if (response == 1){
+                ps = db_connection.prepareStatement("SELECT DISTINCT username userToNotify FROM message WHERE username <> ?");
+                ps.setString(1, messager);
+                responseUsers = ps.executeQuery();
+                while(responseUsers.next()){
+                    userToNotify = responseUsers.getString("userToNotify");
+                    host_port = checkIfUserOnline(userToNotify);
+                    if(!host_port.isEmpty()){
+                        System.out.println("user que estava a ganhar está on");
+                        TCPServer tcp = getTCPbyHostPort(host_port);
+                        if(tcp != null){
+                            System.out.println("antes de note");
+                            String note = "type: notification_message, id: " + auction_id + " user: " + userToNotify + " text: " + text;
+                            tcp.sendNotification(userToNotify, note);
+                        }
+                    } else {
+                        System.out.println("o mano esta off");
+                        insertIntoMessageNotification(userToNotify, bid_message);
+                    }
+                }
+                connectionPoolManager.returnConnectionToPool(db_connection);
+                return true;
+            }
 
         } catch (SQLException e) {
             try {
+                connectionPoolManager.returnConnectionToPool(db_connection);
                 db_connection.rollback();
+                return false;
             } catch (SQLException e1) {
                 e1.printStackTrace();
             }
+
+            e.printStackTrace();
+        }
+        try {
+            db_connection.rollback();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        connectionPoolManager.returnConnectionToPool(db_connection);
+        return false;
+    }
+
+    public void checkIfThereAreMessagesForUser(String username){
+        System.out.println("vou checkar se há mensagens offline para " + username);
+
+        Connection db_connection = connectionPoolManager.getConnectionFromPool();
+        PreparedStatement ps = null;
+        String note;
+        int auction_id;
+        int message_notification_id;
+        String text;
+        String messager;
+        String host_port;
+        ResultSet response;
+
+
+        try {
+            ps = db_connection.prepareStatement("SELECT m.auction_id auction_id, m.text text, m.username messager, mn.id message_notification_id FROM message_notification mn, message m WHERE mn.message_id = m.id AND mn.username = ?");
+            ps.setString(1, username);
+
+            response = ps.executeQuery();
+            System.out.println("recebi a response");
+
+            while(response.next()){
+                System.out.println("entrei no next, logo há mensagens");
+                auction_id = response.getInt("auction_id");
+                text = response.getString("text");
+                messager = response.getString("messager");
+                message_notification_id = response.getInt("message_notification_id");
+                note = "type: notification_message, id: " + auction_id + " user: " + messager + " text: " + text;
+                host_port = checkIfUserOnline(username);
+                if(!host_port.isEmpty()){
+                    System.out.println("tenho host port");
+                    TCPServer tcp = getTCPbyHostPort(host_port);
+                    try {
+                        System.out.println("tcp.sendnotification");
+                        tcp.sendNotification(username, note);
+                        removeMessagesNotifications(message_notification_id);
+                    } catch (RemoteException e) {
+                        System.out.println("Error sending notification to user after he logged in");
+                        e.printStackTrace();
+                    }
+                }
+            }
+
+        } catch (SQLException e) {
+            System.out.println("Error querying for note");
+            e.printStackTrace();
+        }
+
+        connectionPoolManager.returnConnectionToPool(db_connection);
+    }
+
+    public void checkIfThereAreNotificationsForUser(String username){
+        System.out.println("vou checkar se há notificações offline para " + username);
+
+        Connection db_connection = connectionPoolManager.getConnectionFromPool();
+        PreparedStatement ps = null;
+        String note;
+        int auction_id;
+        int bid_notification_id;
+        double amount;
+        String bidder;
+        String host_port;
+        ResultSet response;
+
+
+        try {
+            ps = db_connection.prepareStatement("SELECT b.auction_id auction_id, b.amount amount, b.username bidder, bn.id bid_notification_id FROM bid_notification bn, bid b WHERE bn.bid_id = b.id AND bn.username = ?");
+            ps.setString(1, username);
+
+            response = ps.executeQuery();
+            System.out.println("recebi a response");
+
+            while(response.next()){
+                System.out.println("entrei no next, logo há notificações");
+                auction_id = response.getInt("auction_id");
+                amount = response.getDouble("amount");
+                bidder = response.getString("bidder");
+                bid_notification_id = response.getInt("bid_notification_id");
+                note = "type: notification_bid, id: " + auction_id + " user: " + bidder + " amount: " + amount;
+                host_port = checkIfUserOnline(username);
+                if(!host_port.isEmpty()){
+                    System.out.println("tenho host port");
+                    TCPServer tcp = getTCPbyHostPort(host_port);
+                    try {
+                        System.out.println("tcp.sendnotification");
+                        tcp.sendNotification(username, note);
+                        removeBidsNotifications(bid_notification_id);
+                    } catch (RemoteException e) {
+                        System.out.println("Error sending notification to user after he logged in");
+                        e.printStackTrace();
+                    }
+                }
+            }
+
+        } catch (SQLException e) {
+            System.out.println("Error querying for note");
+            e.printStackTrace();
+        }
+
+        connectionPoolManager.returnConnectionToPool(db_connection);
+    }
+
+
+    private void removeMessagesNotifications(int message_notification_id){
+        PreparedStatement ps = null;
+        Connection db_connection = connectionPoolManager.getConnectionFromPool();
+
+        try {
+            ps = db_connection.prepareStatement("DELETE FROM message_notification WHERE id = ?");
+            ps.setInt(1, message_notification_id);
+            ps.executeUpdate();
+            db_connection.commit();
+
+        } catch (SQLException e) {
+            System.out.println("Error deleting message notification");
             e.printStackTrace();
         }
         connectionPoolManager.returnConnectionToPool(db_connection);
     }
 
-    /*
-    private ResultSet getMessages(){
+    private void removeBidsNotifications(int bid_notification_id){
         PreparedStatement ps = null;
         Connection db_connection = connectionPoolManager.getConnectionFromPool();
 
         try {
-            ps = db_connection.prepareStatement("SELECT bn.bid_id bid_id, bn.username username, b.amount amount, b.username bidder FROM bid_notification bn, bid b where bn.bid_id = b.id");
-            resultSet = ps.executeQuery();
-            resultSet.next();
+            ps = db_connection.prepareStatement("DELETE FROM bid_notification WHERE id = ?");
+            ps.setInt(1, bid_notification_id);
+            ps.executeUpdate();
+            db_connection.commit();
 
         } catch (SQLException e) {
+            System.out.println("Error deleting bid notification");
             e.printStackTrace();
         }
-
-        return resultSet;
-    }*/
-
-    /**
-     * Method to send a notification if the user is online
-     */
-    @Override
-    public void sendNotification(String type){
-        System.out.println("entrei no send notification");
-
-        ResultSet bids = null;
-        ResultSet messages;
-
-        int bid_id;
-        String username;
-        Double amount;
-        String bidder;
-        String host_port = null;
-        int auction_id;
-
-        if(type.equals("both")){
-            System.out.println("both");
-            bids = getBids();
-            try {
-                while(bids.next()){
-                    System.out.println("LUL 1");
-                    bid_id = bids.getInt("bid_id");
-                    username = bids.getString("username");
-                    amount = bids.getDouble("amount");
-                    bidder = bids.getString("bidder");
-                    auction_id = bids.getInt("auction_id");
-                    System.out.println("quem vamos notificar" + username);
-                    System.out.println(online_users);
-                    host_port = checkIfUserOnline(username);
-                    if (!host_port.isEmpty()) {
-                        System.out.println("LUL 2");
-                        TCPServer tcp = getTCPbyHostPort(host_port);
-                        if (tcp != null) {
-                            System.out.println("LUL 3");
-                            String note = "type: notification_bid, id: " + auction_id + ", user: " + bidder + ", amount: " + amount;
-                            System.out.println("vou mandar");
-                            tcp.sendNotification(username, note);
-                            System.out.println("mandei");
-                            removeBidsNotifications(bid_id);
-                        }
-                    }
-                }
-            } catch (SQLException | RemoteException e) {
-                e.printStackTrace();
-            }
-
-            //messages = getMessages();
-        } else if(type.equals("bid")){
-            bids = getBids();
-        } else if(type.equals("message")){
-            //messages = getMessages();
-        }
-
-
+        connectionPoolManager.returnConnectionToPool(db_connection);
     }
 
-    /**
-     * Method to add a message to a specific auction
-     */
-    @Override
-    public boolean message(int auction_id, String username, String msg) throws RemoteException {
-        for (Auction a:auctions){
-            if (a.getID()==auction_id){
-                a.addMsg(username,msg);
-                String note =  "type: notification_message, id: "+ auction_id +", user: " + username + ", text:" + msg;
-                ArrayList<String> users_to_notify = a.getParticipants();
-                for(String u:users_to_notify){
-                    synchronized (notifications){notifications.add(new AbstractMap.SimpleEntry<>(u, note));}
-                }
-                //saveAuctions();
-                return true;
-            }
-        }
-        return false;
-    }
+
 
     /**
      * Method to list all online users
@@ -794,7 +960,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
                 synchronized (notifications){
                     notifications.add(new AbstractMap.SimpleEntry<>(a.getUsernameLastBid(), "type: notification_auction_won, text: You have won the auction with the following id: "+a.getID()));
                 }
-                sendNotification("both");
+                //sendNotification("both");
                 flag = true;
             }
         }
@@ -1148,6 +1314,7 @@ class ConnectionPoolManager{
             Class.forName("com.mysql.jdbc.Driver");
             connection = DriverManager.getConnection(databaseUrl, userName, password);
             connection.setAutoCommit(false);
+            connection.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
             System.out.println("Connection: "+connection);
         }
         catch(SQLException sqle) {

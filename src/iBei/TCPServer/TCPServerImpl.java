@@ -293,6 +293,8 @@ class Connection extends Thread {
             if (tcp.RMI.login(username, password,tcp.host_port)) {
                 out.println("type : login , ok : true");
                 tcp.notes.addConnectedUser(username,out);
+                tcp.RMI.checkIfThereAreNotificationsForUser(username);
+                tcp.RMI.checkIfThereAreMessagesForUser(username);
                 this.username = username;
             } else {
                 out.println("type : login , ok : false");
@@ -481,13 +483,13 @@ class Connection extends Thread {
      * Method that calls RMI bid method and responds to the client
      */
     private void bid(LinkedHashMap<String, String> parsedInput){
-        int id = Integer.parseInt(parsedInput.get("id"));
+        int auction_id = Integer.parseInt(parsedInput.get("id"));
         double amount = Double.parseDouble(parsedInput.get("amount"));
 
         try {
-            if(tcp.RMI.bid(id,this.username, amount)){
+            if(tcp.RMI.bid(auction_id,this.username, amount)){
                 out.println("type : bid , ok : true");
-                tcp.RMI.sendNotification("both");
+                //tcp.RMI.sendNotification("both");
             } else {
                 out.println("type : bid , ok : false");
             }
@@ -535,7 +537,6 @@ class Connection extends Thread {
         try {
             if(tcp.RMI.message(auction_id, this.username, message)){
                 out.println("type : message , ok : true");
-                tcp.RMI.sendNotification("both");
             } else {
                 out.println("type : message , ok : false");
             }
