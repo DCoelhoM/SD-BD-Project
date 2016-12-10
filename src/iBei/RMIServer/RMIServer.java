@@ -28,7 +28,7 @@ public interface RMIServer extends java.rmi.Remote {
     boolean message(int auction_id, String name, String msg) throws java.rmi.RemoteException;
     ArrayList<String> online_users() throws java.rmi.RemoteException;
 
-    void sendNotification() throws java.rmi.RemoteException;
+    void sendNotification(String type) throws java.rmi.RemoteException;
 
     //ADMIN
     boolean cancel_auction(int id) throws java.rmi.RemoteException;

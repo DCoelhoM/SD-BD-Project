@@ -293,7 +293,6 @@ class Connection extends Thread {
             if (tcp.RMI.login(username, password,tcp.host_port)) {
                 out.println("type : login , ok : true");
                 tcp.notes.addConnectedUser(username,out);
-                tcp.RMI.sendNotification();
                 this.username = username;
             } else {
                 out.println("type : login , ok : false");
@@ -488,7 +487,7 @@ class Connection extends Thread {
         try {
             if(tcp.RMI.bid(id,this.username, amount)){
                 out.println("type : bid , ok : true");
-                tcp.RMI.sendNotification();
+                tcp.RMI.sendNotification("both");
             } else {
                 out.println("type : bid , ok : false");
             }
@@ -536,7 +535,7 @@ class Connection extends Thread {
         try {
             if(tcp.RMI.message(auction_id, this.username, message)){
                 out.println("type : message , ok : true");
-                tcp.RMI.sendNotification();
+                tcp.RMI.sendNotification("both");
             } else {
                 out.println("type : message , ok : false");
             }

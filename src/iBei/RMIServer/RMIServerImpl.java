@@ -421,6 +421,23 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         return user_aucs;
     }
 
+
+    private boolean insertIntoBidNotification(Connection db_connection, String username, int bid_id){
+
+        try {
+            preparedStatement = db_connection.prepareStatement("INSERT INTO bid_notification (bid_id, username) VALUES (?, ?)");
+            preparedStatement.setInt(1, bid_id);
+            preparedStatement.setString(2, username);
+            preparedStatement.executeUpdate();
+            db_connection.commit();
+            connectionPoolManager.returnConnectionToPool(db_connection);
+            return true;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            connectionPoolManager.returnConnectionToPool(db_connection);
+            return false;
+        }
+    }
     /**
      * Method to bid on a specific auction
      */
@@ -431,23 +448,29 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         String userToNotify = "";
         String owner = "";
         boolean bids = false;
+        int bid_id = 0;
         Connection db_connection = connectionPoolManager.getConnectionFromPool();
 
         try {
-            ps = db_connection.prepareStatement("SELECT a.username owner, b.amount amount, b.username username FROM bid b, auction a WHERE b.bid_date = (SELECT MAX(bid_date) FROM bid WHERE auction_id = ?) AND a.id = b.auction_id AND a.state = 'active'");
+            ps = db_connection.prepareStatement("SELECT a.username owner, b.amount amount, b.username username, b.id bid_id FROM bid b, auction a WHERE b.bid_date = (SELECT MAX(bid_date) FROM bid WHERE auction_id = ?) AND a.id = b.auction_id AND a.state = 'active'");
 
             ps.setInt(1, id);
+
             resultSet = ps.executeQuery();
-            resultSet.next();
-            if(resultSet != null) bids = true;
-            userToNotify = resultSet.getString("username");
-            owner = resultSet.getString("owner");
+            if(resultSet.isBeforeFirst()) {
+                resultSet.next();
+                bids = true;
+                userToNotify = resultSet.getString("username");
+                owner = resultSet.getString("owner");
+                bid_id = resultSet.getInt("bid_id") + 1;
+            }
 
         } catch (SQLException e) {
+            e.printStackTrace();
             System.out.println("Error preparing query");
         }
         try {
-            if(resultSet.getDouble("amount") > amount){
+            if(!bids || resultSet.getDouble("amount") > amount){
                 // TODO: passar amount como parâmetro para tirar este if
                 preparedStatement = db_connection.prepareStatement("INSERT INTO bid (auction_id, username, bid_date, amount) VALUES (?, ?, ?, ?)");
                 preparedStatement.setInt(1, id);
@@ -459,18 +482,23 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
                 db_connection.commit();
 
                 if (!userToNotify.equals(owner)){
-                    String note = "type: notification_bid, id: " + id + ", user: " + username + ", amount: " + amount;
-                    notifications.add(new AbstractMap.SimpleEntry<>(owner, note));
+                    if (!bids){
+                        ps = db_connection.prepareStatement("SELECT username owner from auction where id = ?");
+                        ps.setInt(1, id);
+                        resultSet = ps.executeQuery();
+                        resultSet.next();
+                        owner = resultSet.getNString("owner");
+                    }
+                    insertIntoBidNotification(db_connection, owner, 1);
                 }
                 if (bids) {
-                    String note = "type: notification_bid, id: " + id + ", user: " + username + ", amount: " + amount;
-                    notifications.add(new AbstractMap.SimpleEntry<>(userToNotify, note));
+                    insertIntoBidNotification(db_connection, userToNotify, bid_id);
                 }
                 connectionPoolManager.returnConnectionToPool(db_connection);
                 return true;
             }
         } catch (SQLException e) {
-            System.out.println("Error executing query to insert auction into database");
+            System.out.println("Error executing query to insert bid into database");
             try {
                 db_connection.rollback();
             } catch (SQLException e1) {
@@ -488,27 +516,36 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     public boolean edit_auction(String username, int id, HashMap<String,String> data) throws RemoteException {
 
         PreparedStatement ps = null;
+        String title = "";
+        String description = "";
+        Timestamp deadline = null;
 
         Connection db_connection = connectionPoolManager.getConnectionFromPool();
 
         try {
-            ps = db_connection.prepareStatement("SELECT a.username owner, b.amount amount, b.username username FROM bid b, auction a WHERE b.bid_date = (SELECT MAX(bid_date) FROM bid WHERE auction_id = ?) AND a.id = b.auction_id AND a.state = 'active'");
+            ps = db_connection.prepareStatement("SELECT * FROM auction a WHERE a.id = ? AND a.username = ?");
+            ps.setInt(1, id);
+            ps.setString(2, username);
+
+            resultSet = ps.executeQuery();
+            resultSet.next();
+            title = resultSet.getString("title");
+            description = resultSet.getString("description");
+            deadline = resultSet.getTimestamp("deadline");
         } catch (SQLException e) {
-            e.printStackTrace();
+            connectionPoolManager.returnConnectionToPool(db_connection);
+            return false;
         }
 
         try {
-            preparedStatement = db_connection.prepareStatement("");
-            preparedStatement.setString(1, owner);
-            preparedStatement.setString(2, "active");
-            preparedStatement.setString(3, code);
-            preparedStatement.setString(4, title);
-            preparedStatement.setString(5, description);
-            java.sql.Timestamp date = new java.sql.Timestamp(new java.util.Date().getTime());
-            preparedStatement.setTimestamp(6, date);
-            Timestamp timestamp = new Timestamp(deadline.getTime());
-            preparedStatement.setTimestamp(7, timestamp);
-            preparedStatement.setDouble(8, amount);
+            preparedStatement = db_connection.prepareStatement("INSERT INTO auction_history (auction_id, title, description, deadline, edited) values (?,?,?,?,?)");
+            preparedStatement.setInt(1, id);
+            preparedStatement.setString(2, title);
+            preparedStatement.setString(3, description);
+            preparedStatement.setTimestamp(4, deadline);
+            java.sql.Timestamp edited = new java.sql.Timestamp(new java.util.Date().getTime());
+            preparedStatement.setTimestamp(5, edited);
+
         } catch (SQLException e) {
             System.out.println("Error preparing query");
         }
@@ -516,6 +553,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
             preparedStatement.executeUpdate();
             db_connection.commit();
         } catch (SQLException e) {
+            e.printStackTrace();
             System.out.println("Error executing query to insert auction into database");
             try {
                 db_connection.rollback();
@@ -524,35 +562,39 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
             }
         }
 
-
-        for (Auction a : auctions){
-            if (a.getID()==id && a.getOwner().equals(username)){
-                a.setPrevious_auction_data("title: " + a.getTitle() + ", code: " + a.getCode() + ", description: " + a.getDescription() + ", deadline: " + a.getDeadline() + ", amount: " + a.getAmount());
-                if (data.containsKey("code")){
-                    a.setCode(data.get("code"));
-                }
-                if (data.containsKey("title")){
-                    a.setTitle(data.get("title"));
-                }
-                if (data.containsKey("description")){
-                    a.setDescription(data.get("description"));
-                }
-                if (data.containsKey("deadline")){
-                    DateFormat df = new SimpleDateFormat("dd-MM-yyyy HH-mm");
-                    try {
-                        a.setDeadline(df.parse(data.get("deadline")));
-                    } catch (ParseException e) {
-                        System.out.println("Problems with parsing deadline.");
-                    }
-                }
-                if (data.containsKey("amount")){
-                   a.setAmount(Double.parseDouble(data.get("amount")));
-                }
-                saveAuctions();
-                return true;
+        try {
+            preparedStatement = db_connection.prepareStatement("UPDATE auction SET title = ?, description = ?, deadline = ? WHERE id = ?");
+            if (data.containsKey("title")){
+                title = data.get("title");
             }
+            if (data.containsKey("description")){
+                description = data.get("description");
+            }
+            if (data.containsKey("deadline")){
+                DateFormat df = new SimpleDateFormat("dd-MM-yyyy HH-mm");
+                try {
+                    deadline = new java.sql.Timestamp(df.parse(data.get("deadline")).getTime());
+                } catch (ParseException e) {
+                    System.out.println("Problems with parsing deadline.");
+                }
+            }
+            preparedStatement.setString(1, title);
+            preparedStatement.setString(2, description);
+            preparedStatement.setTimestamp(3, deadline);
+            preparedStatement.setInt(4, id);
+
+            preparedStatement.executeUpdate();
+            db_connection.commit();
+        } catch (SQLException e) {
+            try {
+                db_connection.rollback();
+            } catch (SQLException e1) {
+                e1.printStackTrace();
+            }
+            e.printStackTrace();
         }
-        return false;
+        connectionPoolManager.returnConnectionToPool(db_connection);
+        return true;
     }
 
     /**
@@ -594,32 +636,118 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         System.out.println(online_users);
     }
 
+
+    private ResultSet getBids(){
+        PreparedStatement ps = null;
+        Connection db_connection = connectionPoolManager.getConnectionFromPool();
+
+        try {
+            ps = db_connection.prepareStatement("SELECT bn.bid_id bid_id, bn.username username, b.amount amount, b.username bidder, b.auction_id FROM bid_notification bn, bid b where bn.bid_id = b.id");
+            resultSet = ps.executeQuery();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        connectionPoolManager.returnConnectionToPool(db_connection);
+        return resultSet;
+    }
+
+    private void removeBidsNotifications(int bid_id){
+        PreparedStatement ps = null;
+        Connection db_connection = connectionPoolManager.getConnectionFromPool();
+
+        try {
+            System.out.println("apagar das bids notifications");
+            ps = db_connection.prepareStatement("DELETE FROM bid_notification WHERE bid_id = ?");
+            ps.setInt(1, bid_id);
+            ps.executeUpdate();
+            db_connection.commit();
+
+
+        } catch (SQLException e) {
+            try {
+                db_connection.rollback();
+            } catch (SQLException e1) {
+                e1.printStackTrace();
+            }
+            e.printStackTrace();
+        }
+        connectionPoolManager.returnConnectionToPool(db_connection);
+    }
+
+    /*
+    private ResultSet getMessages(){
+        PreparedStatement ps = null;
+        Connection db_connection = connectionPoolManager.getConnectionFromPool();
+
+        try {
+            ps = db_connection.prepareStatement("SELECT bn.bid_id bid_id, bn.username username, b.amount amount, b.username bidder FROM bid_notification bn, bid b where bn.bid_id = b.id");
+            resultSet = ps.executeQuery();
+            resultSet.next();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return resultSet;
+    }*/
+
     /**
      * Method to send a notification if the user is online
      */
     @Override
-    public void sendNotification(){
-        List<Map.Entry<String,String>> notes_to_delete = Collections.synchronizedList(new ArrayList<>());
-        synchronized (notifications) {
-            for (Map.Entry<String, String> n : notifications) {
-                String host_port = checkIfUserOnline(n.getKey());
-                if (!host_port.isEmpty()) {
-                    TCPServer tcp = getTCPbyHostPort(host_port);
-                    if (tcp != null) {
-                        try {
-                            tcp.sendNotification(n.getKey(), n.getValue());
-                            notes_to_delete.add(n);
-                        } catch (RemoteException e) {
-                            removeTCPandUsers(host_port);
+    public void sendNotification(String type){
+        System.out.println("entrei no send notification");
+
+        ResultSet bids = null;
+        ResultSet messages;
+
+        int bid_id;
+        String username;
+        Double amount;
+        String bidder;
+        String host_port = null;
+        int auction_id;
+
+        if(type.equals("both")){
+            System.out.println("both");
+            bids = getBids();
+            try {
+                while(bids.next()){
+                    System.out.println("LUL 1");
+                    bid_id = bids.getInt("bid_id");
+                    username = bids.getString("username");
+                    amount = bids.getDouble("amount");
+                    bidder = bids.getString("bidder");
+                    auction_id = bids.getInt("auction_id");
+                    System.out.println("quem vamos notificar" + username);
+                    System.out.println(online_users);
+                    host_port = checkIfUserOnline(username);
+                    if (!host_port.isEmpty()) {
+                        System.out.println("LUL 2");
+                        TCPServer tcp = getTCPbyHostPort(host_port);
+                        if (tcp != null) {
+                            System.out.println("LUL 3");
+                            String note = "type: notification_bid, id: " + auction_id + ", user: " + bidder + ", amount: " + amount;
+                            System.out.println("vou mandar");
+                            tcp.sendNotification(username, note);
+                            System.out.println("mandei");
+                            removeBidsNotifications(bid_id);
                         }
                     }
                 }
+            } catch (SQLException | RemoteException e) {
+                e.printStackTrace();
             }
+
+            //messages = getMessages();
+        } else if(type.equals("bid")){
+            bids = getBids();
+        } else if(type.equals("message")){
+            //messages = getMessages();
         }
-        for (Map.Entry<String,String> n:notes_to_delete){
-            notifications.remove(n);
-        }
-        this.saveNotifications();
+
+
     }
 
     /**
@@ -635,7 +763,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
                 for(String u:users_to_notify){
                     synchronized (notifications){notifications.add(new AbstractMap.SimpleEntry<>(u, note));}
                 }
-                saveAuctions();
+                //saveAuctions();
                 return true;
             }
         }
@@ -666,12 +794,12 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
                 synchronized (notifications){
                     notifications.add(new AbstractMap.SimpleEntry<>(a.getUsernameLastBid(), "type: notification_auction_won, text: You have won the auction with the following id: "+a.getID()));
                 }
-                sendNotification();
+                sendNotification("both");
                 flag = true;
             }
         }
         if (flag){
-            saveAuctions();
+            //saveAuctions();
         }
     }
 
@@ -683,7 +811,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         for (Auction a:auctions){
             if (a.getID()==id && a.getState().equals("active")){
                 a.cancelAuction();
-                saveAuctions();
+                //saveAuctions();
                 return true;
             }
         }
@@ -824,50 +952,6 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         return new DataTransfer(auctions,users,online_users,notifications,auc_prev_id);
     }
 
-    /**
-     * Method to save auctions to a file
-     */
-    public void saveAuctions(){
-        ObjectFile file = new ObjectFile();
-        try {
-            file.openWrite("auctions");
-            try {
-                file.writeObject(this.auctions);
-            } catch (IOException e) {
-                System.out.println("Problem saving auctions");
-            }
-            try {
-                file.closeWrite();
-            } catch (IOException e) {
-                System.out.println("Problem close auctions file(WRITE MODE).");
-            }
-        } catch (IOException e) {
-            System.out.println("Problem opening auctions file(WRITE MODE).");
-        }
-
-    }
-    /**
-     * Method to save users to a file
-     */
-    public void saveUsers(){
-        ObjectFile file = new ObjectFile();
-        try {
-            file.openWrite("users");
-            try {
-                file.writeObject(this.users);
-            } catch (IOException e) {
-                System.out.println("Problem saving users");
-            }
-            try {
-                file.closeWrite();
-            } catch (IOException e) {
-                System.out.println("Problem closing users file(WRITE MODE).");
-            }
-        } catch (IOException e) {
-            System.out.println("Problem opening users file(WRITE MODE)");
-        }
-
-    }
 
     /**
      * Method to save online_users to a file
@@ -892,74 +976,6 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
 
     }
 
-    /**
-     * Method to save notifications to a file
-     */
-    public void saveNotifications(){
-        ObjectFile file = new ObjectFile();
-        try {
-            file.openWrite("notifications");
-            try {
-                file.writeObject(this.notifications);
-            } catch (IOException e) {
-                System.out.println("Problem saving notifications");
-            }
-            try {
-                file.closeWrite();
-            } catch (IOException e) {
-                System.out.println("Problem closing notifications file(WRITE MODE).");
-            }
-        } catch (IOException e) {
-            System.out.println("Problem opening notifications file(WRITE MODE)");
-        }
-    }
-
-    /**
-     * Method to load auctions from a file
-     */
-    public void loadAuctions(){
-        ObjectFile file = new ObjectFile();
-        try {
-            file.openRead("auctions");
-            try {
-                this.auctions = (List<Auction>) file.readObject();
-            } catch (IOException | ClassNotFoundException e) {
-                System.out.println("Problem loading auctions");
-            }
-
-            try {
-                file.closeRead();
-            } catch (IOException e) {
-                System.out.println("Problem closing auctions file(READ MODE)");
-            }
-        } catch (IOException e) {
-            System.out.println("Problem opening auctions file(READ MODE)(No auctions found)");
-        }
-    }
-
-    /**
-     * Method to load users from a file
-     */
-    public void loadUsers(){
-        ObjectFile file = new ObjectFile();
-        try {
-            file.openRead("users");
-
-            try {
-                this.users = (List<User>) file.readObject();
-            } catch (IOException | ClassNotFoundException e) {
-                System.out.println("Problem loading users");
-            }
-
-            try {
-                file.closeRead();
-            } catch (IOException e) {
-                System.out.println("Problem closing users file(READ MODE)");
-            }
-        } catch (IOException e) {
-            System.out.println("Problem opening users file(READ MODE)(No users found)");
-        }
-    }
 
     /**
      * Method to load online_users from a file
@@ -986,30 +1002,6 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     }
 
     /**
-     * Method to load notifications from a file
-     */
-    public void loadNotifications(){
-        ObjectFile file = new ObjectFile();
-        try {
-            file.openRead("notifications");
-
-            try {
-                this.notifications = (List<Map.Entry<String,String>>) file.readObject();
-            } catch (IOException | ClassNotFoundException e) {
-                System.out.println("Problem loading notifications");
-            }
-
-            try {
-                file.closeRead();
-            } catch (IOException e) {
-                System.out.println("Problem closing notifications file(READ MODE)");
-            }
-        } catch (IOException e) {
-            System.out.println("Problem opening notifications file(READ MODE)(No notifications found)");
-        }
-    }
-
-    /**
      * Method to save all data received from primary RMI via ping() method
      */
     public void saveDataFromPrimaryRMI(DataTransfer data){
@@ -1018,9 +1010,6 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         this.online_users = data.getOnline_users();
         this.notifications = data.getNotifications();
         saveOnlineUsers();
-        saveAuctions();
-        saveNotifications();
-        saveUsers();
     }
 
     /**
@@ -1084,30 +1073,12 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
 
     }
 
-
-    /*public static Connection getConnection() throws SQLException{
-
-        try {
-            Class.forName("com.mysql.jdbc.Driver");
-        } catch (ClassNotFoundException e) {
-            System.out.println("Error reading JDBC Driver");
-        }
-        String connectionString = "jdbc:mysql://localhost:3306/ibei";
-        Connection connection = DriverManager.getConnection(connectionString, "root", "ibei");
-
-        return connection;
-    }*/
-
     /**
      * Method to init RMIServer
      */
     public static void main(String args[]){
 
         connectionPoolManager = new ConnectionPoolManager();
-
-        /*db_connection = getConnection();
-        statement = db_connection.createStatement();
-        db_connection.setAutoCommit(false);*/
 
         String host_aux_rmi = "localhost";
         int port_aux_rmi=7000, port=7000;
