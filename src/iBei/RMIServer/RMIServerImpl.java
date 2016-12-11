@@ -225,7 +225,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
      * Method to create a new auction
      */
 
-    // type: create_auction, code: 123152152, title: 1928, description: benfica campeao, deadline: 2017-01-01 14:51, amount: 10
+    // type: create_auction, code: 123152152, title: 1928, description: benfica campeao, deadline: 2017-01-01 14-51, amount: 200
     @Override
     synchronized public boolean create_auction(String owner, String code, String title, String description, Date deadline, double amount) throws RemoteException {
         Auction new_auc = new Auction(owner, code, title, description, deadline, amount);
@@ -1206,20 +1206,26 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
      */
     @Override
     public Map mostAuctionsUsers() throws RemoteException {
-
+        Connection db_connection = connectionPoolManager.getConnectionFromPool();
+        PreparedStatement ps;
+        ResultSet topAuctions;
+        String owner;
+        int numberAuctions;
         HashMap<String, Integer> usersAuctions = new HashMap<>();
+        try {
+            ps = db_connection.prepareStatement("SELECT COUNT(*) number_auctions, username owner from auction GROUP by username  ORDER BY number_auctions DESC LIMIT 10");
+            topAuctions = ps.executeQuery();
+            while(topAuctions.next()){
+                owner = topAuctions.getString("owner");
+                numberAuctions = topAuctions.getInt("number_auctions");
+                usersAuctions.put(owner, numberAuctions);
 
-        for(Auction a:auctions){
-            // if user is already in the hashmap, +=1 the number of auctions created
-            if(usersAuctions.containsKey(a.getOwner())){
-                usersAuctions.put(a.getOwner(), usersAuctions.get(a.getOwner()) + 1);
-            } else {
-                usersAuctions.put(a.getOwner(), 1);
             }
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
-
-        Map<Integer, String> map = sortByValues(usersAuctions);
-        return map;
+        connectionPoolManager.returnConnectionToPool(db_connection);
+        return usersAuctions;
     }
 
     /**
@@ -1228,46 +1234,29 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     @Override
     public Map userWithMostAuctionsWon() throws RemoteException {
 
+        Connection db_connection = connectionPoolManager.getConnectionFromPool();
+        PreparedStatement ps;
+        ResultSet auctionWithMostWins;
+        String username;
         HashMap<String, Integer> usersAuctions = new HashMap<>();
 
-        for(Auction a:auctions){
-            // if user is already in the hashmap, +=1 the number of auctions created
-            if(a.getState().equals("ended")){
-                if (a.getNumberBids()>0) {
-                    if (usersAuctions.containsKey(a.getUsernameLastBid())) {
-                        usersAuctions.put(a.getUsernameLastBid(), usersAuctions.get(a.getUsernameLastBid()) + 1);
-                    } else {
-                        usersAuctions.put(a.getUsernameLastBid(), 1);
-                    }
+        try {
+            ps = db_connection.prepareStatement("SELECT  a.username username from (SELECT b.username username from bid b, auction a  where (b.bid_date, b.auction_id) in (SELECT MAX(bid_date), auction_id from bid GROUP BY auction_id) AND a.id = b.auction_id AND a.state = 'ended')a ORDER BY a.username LIMIT 10;");
+            auctionWithMostWins = ps.executeQuery();
+            while (auctionWithMostWins.next()){
+                username = auctionWithMostWins.getString("username");
+                if (usersAuctions.containsKey(username)) {
+                    usersAuctions.put(username, usersAuctions.get(username) + 1);
+                } else {
+                    usersAuctions.put(username, 1);
                 }
             }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
 
-        Map<Integer, String> map = sortByValues(usersAuctions);
-        return map;
-    }
-
-    /**
-     * Method to sort a HashMap by value
-     */
-    private static HashMap sortByValues(HashMap map) {
-        List list = new LinkedList(map.entrySet());
-        // Defined Custom Comparator here
-        Collections.sort(list, new Comparator() {
-            public int compare(Object o1, Object o2) {
-                return ((Comparable) ((Map.Entry) (o2)).getValue())
-                        .compareTo(((Map.Entry) (o1)).getValue());
-            }
-        });
-
-        // Here I am copying the sorted list in HashMap
-        // using LinkedHashMap to preserve the insertion order
-        HashMap sortedHashMap = new LinkedHashMap();
-        for (Iterator it = list.iterator(); it.hasNext();) {
-            Map.Entry entry = (Map.Entry) it.next();
-            sortedHashMap.put(entry.getKey(), entry.getValue());
-        }
-        return sortedHashMap;
+        return usersAuctions;
     }
 
     /**
@@ -1276,13 +1265,36 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     @Override
     public ArrayList<Auction> auctionsInTheLast10Days(){
         ArrayList<Auction> listAuctionsInTheLast10Days = new ArrayList<>();
-        Date now = new Date();
-        for(Auction a : auctions){
-            long diff = now.getTime() - a.getCreationDate().getTime();
-            if(TimeUnit.DAYS.convert(diff, TimeUnit.MILLISECONDS) <= 10){
-                listAuctionsInTheLast10Days.add(a);
+        Connection db_connection = connectionPoolManager.getConnectionFromPool();
+        PreparedStatement ps;
+        ResultSet lastBids;
+        String owner;
+        int numberAuctions;
+        String code;
+        String title;
+        String description;
+        Timestamp deadline;
+        double amount;
+        Date date;
+
+        try {
+            ps = db_connection.prepareStatement("SELECT username owner, title title, description description, deadline deadline, amount amount, code code from auction WHERE DATEDIFF(sysdate(), created_date) < 10");
+            lastBids = ps.executeQuery();
+            while(lastBids.next()){
+                owner = lastBids.getString("owner");
+                title = lastBids.getString("title");
+                description = lastBids.getString("description");
+                code = lastBids.getString("code");
+                deadline = lastBids.getTimestamp("deadline");
+                date = new Date(deadline.getTime());
+                amount = lastBids.getDouble("amount");
+                listAuctionsInTheLast10Days.add(new Auction(owner, code, title, description, date, amount));
             }
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
+        connectionPoolManager.returnConnectionToPool(db_connection);
+
         return listAuctionsInTheLast10Days;
     }
 
@@ -1461,7 +1473,7 @@ class ConnectionPoolManager{
 
     String databaseUrl = "jdbc:mysql://localhost:3306/ibei";
     String userName = "root";
-    String password = "ibei";
+    String password = "coimbra";
 
     Vector connectionPool = new Vector();
 
@@ -1507,8 +1519,9 @@ class ConnectionPoolManager{
         try {
             Class.forName("com.mysql.jdbc.Driver");
             connection = DriverManager.getConnection(databaseUrl, userName, password);
-            connection.setAutoCommit(false);
             connection.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
+            connection.setAutoCommit(false);
+
             System.out.println("Connection: "+connection);
         }
         catch(SQLException sqle) {
