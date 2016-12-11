@@ -730,6 +730,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     }
 
     public boolean message(int auction_id, String messager, String text) throws RemoteException {
+        System.out.println("ENTREI NO MESSAGE");
         PreparedStatement ps;
         Connection db_connection = connectionPoolManager.getConnectionFromPool();
         int response;
@@ -746,17 +747,27 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
             java.sql.Timestamp date = new java.sql.Timestamp(new java.util.Date().getTime());
             ps.setTimestamp(3, date);
             ps.setString(4, text);
-
+            System.out.println("ANTES DO EXECUTE UPDATE");
+            System.out.println(auction_id);
+            System.out.println(messager);
+            System.out.println(date);
+            System.out.println(text);
             response = ps.executeUpdate();
+            System.out.println("depois do execute hu3");
             db_connection.commit();
             ResultSet keys = ps.getGeneratedKeys();
             keys.next();
             id_message = keys.getInt(1);
+            System.out.println(id_message);
+
+            System.out.println("DEPOIS");
 
 
+            System.out.println("A RESPOSTA FOI ===================="+ response);
             if (response == 1){
-                ps = db_connection.prepareStatement("SELECT DISTINCT username userToNotify FROM message WHERE username <> ?");
+                ps = db_connection.prepareStatement("SELECT DISTINCT username userToNotify FROM message WHERE username <> ? AND auction_id = ?");
                 ps.setString(1, messager);
+                ps.setInt(2, auction_id);
                 responseUsers = ps.executeQuery();
                 while(responseUsers.next()){
                     userToNotify = responseUsers.getString("userToNotify");
@@ -766,7 +777,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
                         TCPServer tcp = getTCPbyHostPort(host_port);
                         if(tcp != null){
                             System.out.println("antes de note");
-                            String note = "type: notification_message, id: " + auction_id + " user: " + userToNotify + " text: " + text;
+                            String note = "type: notification_message, id: " + auction_id + ", user: " + userToNotify + ", text: " + text;
                             tcp.sendNotification(userToNotify, note);
                         }
                     } else {
@@ -1019,7 +1030,6 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         }
 
         connectionPoolManager.returnConnectionToPool(db_connection);
-
     }
 
     /**
@@ -1027,14 +1037,37 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
      */
     @Override
     public boolean cancel_auction(int id) throws RemoteException {
-        for (Auction a:auctions){
-            if (a.getID()==id && a.getState().equals("active")){
-                a.cancelAuction();
-                //saveAuctions();
+
+        Connection db_connection = connectionPoolManager.getConnectionFromPool();
+        PreparedStatement ps;
+        int succeeded;
+
+        try {
+            ps = db_connection.prepareStatement("UPDATE auction SET state = 'canceled' WHERE state = 'active' and id = ?");
+            ps.setInt(1, id);
+            succeeded = ps.executeUpdate();
+            db_connection.commit();
+
+            if(succeeded == 1){
+                db_connection.commit();
+                connectionPoolManager.returnConnectionToPool(db_connection);
                 return true;
+            } else{
+                db_connection.rollback();
+                connectionPoolManager.returnConnectionToPool(db_connection);
+                return false;
             }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            try {
+                db_connection.rollback();
+            } catch (SQLException e1) {
+                e1.printStackTrace();
+            }
+            connectionPoolManager.returnConnectionToPool(db_connection);
+            return false;
         }
-        return false;
     }
 
     /**
@@ -1042,21 +1075,129 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
      */
     @Override
     public boolean ban_user(String username) throws RemoteException {
-        for (User u:users){
-            if (u.getUsername().equals(username) && u.getState().equals("active")){
-                u.ban();
-                for (Auction a:auctions){
-                    //Cancelar auctions do utilizador
-                    if (a.getOwner().equals(username)){
-                        a.cancelAuction();
-                    } else if (a.checkUserBidActivity(username)){ //confirmar se fez licitações nos leilões
-                        a.removeUserBids(username);
-                        message(a.getID(),"Admin","User "+ username +" was banned, sorry for the inconvenience!");
+        System.out.println("entrei no ban_user");
+
+        Connection db_connection = connectionPoolManager.getConnectionFromPool();
+        PreparedStatement ps;
+        int response;
+        ResultSet auctions_to_remove;
+        ResultSet user_oldest_bids;
+        ResultSet max_date;
+        int auction_id;
+        double amount;
+        Timestamp date_bid;
+        Timestamp date_bid_max;
+        ResultSet getResponse;
+        Timestamp date_to_change;
+        String owner = "";
+
+        try {
+            ps = db_connection.prepareStatement("UPDATE user SET state = 'banned' WHERE state = 'active' and username = ?");
+            ps.setString(1, username);
+            response = ps.executeUpdate();
+
+            if(response == 1){
+                db_connection.commit();
+                System.out.println("response foi 1, bani o user " + username);
+
+                // 1º CANCELAR AUCTIONS DE ONDE O USER A SER BANIDO É OWNER
+                ps = db_connection.prepareStatement("SELECT id auction_id FROM auction WHERE username = ?");
+                ps.setString(1, username);
+                auctions_to_remove = ps.executeQuery();
+
+                while(auctions_to_remove.next()){
+                    System.out.println("vou cancelar auction do " + username);
+                    cancel_auction(auctions_to_remove.getInt("auction_id"));
+                }
+
+                // REMOVER BIDS
+
+                // encontrar a primeira dele
+                // TODO: ESTE SELECT TÁ FODIDO
+                ps = db_connection.prepareStatement("SELECT b.auction_id auction_id, b.amount amount, b.bid_date bid_date FROM bid b WHERE (b.bid_date, b.auction_id) IN (SELECT MIN(bid_date), b.auction_id FROM bid WHERE username = ? GROUP BY auction_id) AND username = ?");
+                ps.setString(1, username);
+                ps.setString(2, username);
+                user_oldest_bids = ps.executeQuery();
+
+
+                // por a ultima igual à primeira dele e remover todas entre a ultima e a primeira dele
+                while(user_oldest_bids.next()){
+                    System.out.println("dentro do while");
+                    amount = user_oldest_bids.getDouble("amount");
+                    System.out.println(amount);
+                    auction_id = user_oldest_bids.getInt("auction_id");
+                    System.out.println(auction_id);
+                    date_bid = user_oldest_bids.getTimestamp("bid_date");
+                    System.out.println(date_bid);
+                    ps = db_connection.prepareStatement("SELECT bid_date bid_date_max, a.username owner FROM bid b, auction a WHERE b.bid_date = (SELECT MAX(bid_date) FROM bid WHERE auction_id = ? AND username <> ? GROUP BY auction_id) AND b.auction_id = ? and a.id = b.auction_id");
+                    ps.setInt(1, auction_id);
+                    ps.setString(2, username);
+                    ps.setInt(3, auction_id);
+                    System.out.println("vou executar a query");
+                    max_date = ps.executeQuery();
+                    if(max_date.next()){ // SE UILIZADOR A SER BANIDO NÃO FOI O UNICO A FAZER BID
+                        date_bid_max = max_date.getTimestamp("bid_date_max");
+                        owner = max_date.getString("owner");
+                        System.out.println("depois do select");
+
+                        ps = db_connection.prepareStatement("SELECT MAX(bid_date) date_to_change_amount FROM bid WHERE auction_id = ? AND username <> ? GROUP BY auction_id");
+                        ps.setInt(1, auction_id);
+                        ps.setString(2, username);
+                        getResponse = ps.executeQuery();
+                        getResponse.next();
+                        date_to_change = getResponse.getTimestamp("date_to_change_amount");
+
+                        ps = db_connection.prepareStatement("UPDATE bid SET amount = ? WHERE bid_date = ? AND auction_id = ?");
+                        ps.setDouble(1, amount);
+                        ps.setTimestamp(2, date_to_change);
+                        ps.setInt(3, auction_id);
+                        ps.executeUpdate();
+                        db_connection.commit();
+                        System.out.println("dei update no amount da pessoa que tinha tinha o máximo");
+
+                        ps = db_connection.prepareStatement("DELETE FROM bid where (bid_date > ? and bid_date < ? and auction_id = ?) OR (username = ? AND auction_id = ?)");
+                        System.out.println(date_bid.toString());
+                        System.out.println(date_bid_max.toString());
+                        ps.setString(1, date_bid.toString());
+                        ps.setString(2, date_bid_max.toString());
+                        ps.setInt(3, auction_id);
+                        ps.setString(4, username);
+                        ps.setInt(5, auction_id);
+                        ps.executeUpdate();
+                        db_connection.commit();
+                        System.out.println("VOU ENVIAR MENSAGEM PARA O NURAL!!!!!!!!!!");
+
+
+                        message(auction_id, owner, "Sorry for the inconvenience, but something changed in this auction.");
+                        System.out.println("apaguei as bids do mano a ser banido aka " + username);
+
+                    } else {
+                        ps = db_connection.prepareStatement("DELETE FROM bid where username = ? AND auction_id = ?");
+                        ps.setString(1, username);
+                        ps.setInt(2, auction_id);
+                        ps.executeUpdate();
+                        db_connection.commit();
+
+                        System.out.println("VOU ENVIAR MENSAGEM PARA O NURAL!!!!!!!!!!");
+                        message(auction_id, owner, "Sorry for the inconvenience, but something changed in this auction.");
+                        System.out.println("ele foi o unico a fazer bid, logo dou delete das cenas dele");
                     }
                 }
+
+                connectionPoolManager.returnConnectionToPool(db_connection);
                 return true;
             }
+        } catch (SQLException e) {
+            try {
+                db_connection.rollback();
+                connectionPoolManager.returnConnectionToPool(db_connection);
+                return false;
+            } catch (SQLException e1) {
+                e1.printStackTrace();
+            }
+            e.printStackTrace();
         }
+
         return false;
     }
 

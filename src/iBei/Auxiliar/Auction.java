@@ -113,6 +113,7 @@ public class Auction implements Serializable {
         if(n_bids>0) {
             double amount = 0;
             int index_first_occur = 0;
+            // mais antiga do user
             for (int i = 0; i < n_bids; i++) {
                 if (bids.get(i).getKey().equals(username)) {
                     amount = bids.get(i).getValue();
@@ -121,6 +122,7 @@ public class Auction implements Serializable {
                 }
             }
 
+            // por a ultima igual à primeira dele e remover todas entre a ultima e a primeira dele
             boolean last_valid_user_to_bid=true;
             for (int i = n_bids - 1; i >= index_first_occur; i--) {
                 if(!bids.get(i).getKey().equals(username) && last_valid_user_to_bid){
