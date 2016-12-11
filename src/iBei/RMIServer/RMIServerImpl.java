@@ -19,6 +19,7 @@ import java.util.*;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
+import static java.awt.SystemColor.text;
 
 
 public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implements RMIServer{
@@ -735,7 +736,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         ResultSet responseUsers;
         String userToNotify = "";
         String host_port = "";
-        int bid_message;
+        int id_message;
 
         try {
             ps = db_connection.prepareStatement("INSERT INTO message (auction_id, username, message_date, text) VALUES (?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
@@ -750,7 +751,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
             db_connection.commit();
             ResultSet keys = ps.getGeneratedKeys();
             keys.next();
-            bid_message = keys.getInt(1);
+            id_message = keys.getInt(1);
 
 
             if (response == 1){
@@ -770,7 +771,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
                         }
                     } else {
                         System.out.println("o mano esta off");
-                        insertIntoMessageNotification(userToNotify, bid_message);
+                        insertIntoMessageNotification(userToNotify, id_message);
                     }
                 }
                 connectionPoolManager.returnConnectionToPool(db_connection);
@@ -809,7 +810,6 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         String messager;
         String host_port;
         ResultSet response;
-
 
         try {
             ps = db_connection.prepareStatement("SELECT m.auction_id auction_id, m.text text, m.username messager, mn.id message_notification_id FROM message_notification mn, message m WHERE mn.message_id = m.id AND mn.username = ?");
@@ -953,20 +953,73 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
      * Method to end auctions when the deadline ends
      */
     public void end_auctions(){
-        boolean flag = false;
-        for (Auction a:auctions){
-            if (a.getDeadline().before(new Date()) && a.getState().equals("active")){
-                a.endAuction();
-                synchronized (notifications){
-                    notifications.add(new AbstractMap.SimpleEntry<>(a.getUsernameLastBid(), "type: notification_auction_won, text: You have won the auction with the following id: "+a.getID()));
+
+        Connection db_connection = connectionPoolManager.getConnectionFromPool();
+        ResultSet response;
+        PreparedStatement ps = null;
+        int auction_id;
+        String notification = "";
+        String userToNotify = "";
+        String host_port;
+        int message_id;
+
+        try {
+            ps = db_connection.prepareStatement("SELECT b.username username, a.id auction_id FROM bid b, auction a WHERE (b.bid_date, b.auction_id) IN (SELECT MAX(bid_date), auction_id FROM bid GROUP BY auction_id) AND a.id = b.auction_id AND a.state = 'active' AND a.deadline < sysdate();");
+            response = ps.executeQuery();
+
+            ps = db_connection.prepareStatement("UPDATE auction SET state = 'ended' WHERE state = 'active' AND deadline < sysdate()");
+            ps.executeUpdate();
+
+            db_connection.commit();
+
+            System.out.println("alterei estado de algumas???");
+
+            while(response.next()){
+                auction_id = response.getInt("auction_id");
+                userToNotify = response.getString("username");
+                notification = "type: notification_auction_won, text: You have won the auction with the following id: " + auction_id;
+                host_port = checkIfUserOnline(userToNotify);
+                if(!host_port.isEmpty()){
+                    System.out.println("user que ganhou está on");
+                    TCPServer tcp = getTCPbyHostPort(host_port);
+                    if(tcp != null){
+                        System.out.println("antes de note");
+                        try {
+                            tcp.sendNotification(userToNotify, notification);
+                        } catch (RemoteException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                } else {
+                    System.out.println("o mano esta off");
+                    ps = db_connection.prepareStatement("INSERT INTO message (auction_id, username, message_date, text) VALUES (?,?,?,?)", Statement.RETURN_GENERATED_KEYS);
+                    ps.setInt(1, auction_id);
+                    ps.setString(2, userToNotify);
+                    java.sql.Timestamp date = new java.sql.Timestamp(new java.util.Date().getTime());
+                    ps.setTimestamp(3, date);
+                    ps.setString(4, notification);
+
+                    ps.executeUpdate();
+
+                    ResultSet keys = ps.getGeneratedKeys();
+                    keys.next();
+                    message_id = keys.getInt(1);
+
+                    db_connection.commit();
+                    insertIntoMessageNotification(userToNotify, message_id);
                 }
-                //sendNotification("both");
-                flag = true;
             }
+        } catch (SQLException e) {
+            try {
+                db_connection.rollback();
+            } catch (SQLException e1) {
+                e1.printStackTrace();
+            }
+            e.printStackTrace();
         }
-        if (flag){
-            //saveAuctions();
-        }
+
+        connectionPoolManager.returnConnectionToPool(db_connection);
+
     }
 
     /**
