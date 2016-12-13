@@ -1,6 +1,6 @@
-package iBei.RMIServer;
-import iBei.TCPServer.TCPServer;
-import iBei.Auxiliar.*;
+package iBei.src.iBei.RMIServer;
+import iBei.src.iBei.TCPServer.TCPServer;
+import iBei.src.iBei.Auxiliar.*;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
