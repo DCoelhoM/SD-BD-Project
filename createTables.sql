@@ -5,11 +5,12 @@ drop table if exists auction_history;
 create table auction_history
 (
   auction_id           mediumint not null AUTO_INCREMENT,
+  version              numeric not null,
   title                char(32),
   description          char(128),
   deadline             datetime,
   edited               datetime,
-  primary key (auction_id, edited)
+  primary key (auction_id, version)
 );
 
 /*==============================================================*/
@@ -113,13 +114,13 @@ alter table message add constraint FK_relationship_6 foreign key (username)
 references user (username) on delete restrict;
 
 alter table bid_notification add constraint FK_relationship_7 foreign key (bid_id)
-references bid (id) on delete cascade;
+references bid (id) on delete restrict;
 
 alter table bid_notification add constraint FK_relationship_8 foreign key (username)
-references user (username) on delete cascade;
+references user (username) on delete restrict;
 
 alter table message_notification add constraint FK_relationship_9 foreign key (message_id)
-references message (id) on delete cascade;
+references message (id) on delete restrict;
 
 alter table message_notification add constraint FK_relationship_10 foreign key (username)
-references user (username) on delete cascade;
+references user (username) on delete restrict;
