@@ -1,5 +1,5 @@
-package iBei.TCPServer;
-import iBei.RMIServer.*;
+package iBei.src.iBei.TCPServer;
+import iBei.src.iBei.RMIServer.*;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
