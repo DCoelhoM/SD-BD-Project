@@ -1,4 +1,4 @@
-package iBei.src.iBei.Auxiliar;
+package iBei.Auxiliar;
 import java.io.*;
 
 public class TextFile {

@@ -1,4 +1,4 @@
-package iBei.src.iBei.Auxiliar;
+package iBei.Auxiliar;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.*;

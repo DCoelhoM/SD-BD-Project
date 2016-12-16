@@ -1,9 +1,9 @@
-package iBei.src.iBei.RMIServer;
+package iBei.RMIServer;
 
 import java.sql.*;
 
-import iBei.src.iBei.TCPServer.TCPServer;
-import iBei.src.iBei.Auxiliar.*;
+import iBei.TCPServer.TCPServer;
+import iBei.Auxiliar.*;
 
 import javax.xml.transform.Result;
 import java.io.IOException;
