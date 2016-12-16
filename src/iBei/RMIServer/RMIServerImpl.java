@@ -75,18 +75,18 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         Connection db_connection = connectionPoolManager.getConnectionFromPool();
 
         try {
-            preparedStatement = db_connection.prepareStatement("SELECT username FROM user u WHERE u.username = ?");
+            preparedStatement = db_connection.prepareStatement("SELECT u.username FROM user u WHERE u.username = ?");
             preparedStatement.setString(1, username);
         } catch (SQLException e) {
             System.out.println("Error preparing query");
         }
         try {
             rs = preparedStatement.executeQuery();
-            rs.next();
-            if(rs.getString("username").equals(username)){
-
-                connectionPoolManager.returnConnectionToPool(db_connection);
-                return false;
+            if(rs.next()){
+                if(rs.getString("username").equals(username)){
+                    connectionPoolManager.returnConnectionToPool(db_connection);
+                    return false;
+                }
             }
         } catch (SQLException e) {
             System.out.println("Error executing query to check username availability from database");
@@ -432,6 +432,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         return auction;
     }
 
+
     /**
      * Method to list all auctions from a specific user
      */
@@ -441,10 +442,13 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
 
         ResultSet rs;
         Connection db_connection = connectionPoolManager.getConnectionFromPool();
+        System.out.println(username);
+
 
         try {
-            preparedStatement = db_connection.prepareStatement("SELECT * FROM auction a WHERE a.username = ?");
-            preparedStatement.setString(1, username);
+            preparedStatement = db_connection.prepareStatement("select distinct a.id, a.title, a.description, a.username, a.code, a.deadline, a.amount from auction a where a.username = ? UNION select distinct a.id, a.title, a.description, a.username, a.code, a.deadline, a.amount from auction a, bid b where (a.id = b.auction_id and b.username=?)");
+                    preparedStatement.setString(1, username);
+            preparedStatement.setString(2, username);
         } catch (SQLException e) {
             System.out.println("Error preparing query");
         }
@@ -524,7 +528,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         Timestamp deadline = null;
 
         Connection db_connection = connectionPoolManager.getConnectionFromPool();
-
+        /*
         try {
             preparedStatement = db_connection.prepareStatement("INSERT INTO auction_history (auction_id, title, description, deadline, edited) SELECT a.id, a.title, a.description, a.deadline, sysdate() FROM auction a WHERE a.id = ? AND a.username = ?");
             preparedStatement.setInt(1, id);
@@ -544,6 +548,22 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
             } catch (SQLException e1) {
                 System.out.println("Error rolling back in create_auction");
             }
+        }
+        */
+
+        try {
+            ps = db_connection.prepareStatement("SELECT * FROM auction a WHERE a.id = ? AND a.username = ?");
+            ps.setInt(1, id);
+            ps.setString(2, username);
+
+            resultSet = ps.executeQuery();
+            resultSet.next();
+            title = resultSet.getString("title");
+            description = resultSet.getString("description");
+            deadline = resultSet.getTimestamp("deadline");
+        } catch (SQLException e) {
+            connectionPoolManager.returnConnectionToPool(db_connection);
+            return false;
         }
 
         try {

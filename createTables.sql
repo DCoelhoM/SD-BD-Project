@@ -114,15 +114,23 @@ alter table message add constraint FK_relationship_6 foreign key (username)
 references user (username) on delete restrict;
 
 alter table bid_notification add constraint FK_relationship_7 foreign key (bid_id)
-references bid (id) on delete restrict;
+references bid (id) on delete cascade;
 
 alter table bid_notification add constraint FK_relationship_8 foreign key (username)
-references user (username) on delete restrict;
+references user (username) on delete cascade;
 
 alter table message_notification add constraint FK_relationship_9 foreign key (message_id)
-references message (id) on delete restrict;
+references message (id) on delete cascade;
 
 alter table message_notification add constraint FK_relationship_10 foreign key (username)
-references user (username) on delete restrict;
+references user (username) on delete cascade;
+
+alter table auction ADD INDEX (state);
+alter table user ADD INDEX (state);
+alter table user ADD INDEX (status);
 
 
+CREATE OR REPLACE TRIGGER update_auction_history BEFORE UPDATE ON auction
+BEGIN
+  INSERT INTO auction_history(auction_id, title, description, deadline, edited) VALUES(:OLD.id, :OLD.title, :OLD.description, :OLD.deadline, sysdate());
+END;
