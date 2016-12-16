@@ -91,21 +91,8 @@ public class Auction implements Serializable {
     }
 
     public boolean addBid(String username, double value){
-        //if (!username.equals(this.owner)) {
-            if (value>0 && value<amount) {
-                if (bids.size() > 0) {
-                    double last_bid = bids.get(bids.size() - 1).getValue();
-                    if (value < last_bid) {
-                        bids.add(new AbstractMap.SimpleEntry<>(username, value));
-                        return true;
-                    }
-                } else {
-                    bids.add(new AbstractMap.SimpleEntry<>(username, value));
-                    return true;
-                }
-            }
-        //}
-        return false;
+        bids.add(new AbstractMap.SimpleEntry<>(username, value));
+        return true;
     }
 
     public void removeUserBids(String username){
@@ -226,6 +213,7 @@ public class Auction implements Serializable {
     public String toString() {
         int msg_count = messages.size();
         int bids_count = bids.size();
+        System.out.println(bids_count);
 
         String aux_details = "code: "+ code + ", title: " + title + ", description: " + description + ", amount: " + amount + ", deadline: " + deadline.toString() + ", messages_count: " + String.valueOf(msg_count);
 

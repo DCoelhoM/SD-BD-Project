@@ -5,7 +5,6 @@ import java.sql.*;
 import iBei.TCPServer.TCPServer;
 import iBei.Auxiliar.*;
 
-import javax.xml.transform.Result;
 import java.io.IOException;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
@@ -17,15 +16,11 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.Date;
-import java.util.concurrent.TimeUnit;
-
-import static java.awt.SystemColor.text;
 
 
 public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implements RMIServer{
     private List<Auction> auctions;
     private List<User> users;
-    private Map<String,String> online_users; //{Username, TCP_Host:Port}
     private Map<String,TCPServer> connected_TCPs; //{TCP_Host:Port, TCPServer}
     private List<Map.Entry<String,String>> notifications; //{Username, Message}
 
@@ -40,7 +35,6 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         super();
         auctions = Collections.synchronizedList(new ArrayList<>());
         users = Collections.synchronizedList(new ArrayList<>());
-        online_users = Collections.synchronizedMap(new HashMap<>());
         connected_TCPs = Collections.synchronizedMap(new HashMap<>());
         notifications = Collections.synchronizedList(new ArrayList<>());
     }
@@ -53,9 +47,12 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         connected_TCPs.put(host_port, tcp);
     }
 
+
+
     /**
      * Method to count the number of users connected to a TCPServer
      */
+    /*
     @Override
     public int checkNumberUsers(String host_port) throws RemoteException {
         int counter = 0;
@@ -65,7 +62,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
             }
         }
         return counter;
-    }
+    }*/
 
     /**
      * Method to check if a username is available
@@ -78,7 +75,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         Connection db_connection = connectionPoolManager.getConnectionFromPool();
 
         try {
-            preparedStatement = db_connection.prepareStatement("select username from user u where u.username = ?");
+            preparedStatement = db_connection.prepareStatement("SELECT username FROM user u WHERE u.username = ?");
             preparedStatement.setString(1, username);
         } catch (SQLException e) {
             System.out.println("Error preparing query");
@@ -170,33 +167,62 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     }
 
     /**
-     * Method to save username and host:port to online_users
+     * Method to check if user is online
      */
-    private void addOnlineUser(String username, String tcp_host_port) throws RemoteException {
-        online_users.put(username, tcp_host_port);
-        this.saveOnlineUsers();
-    }
 
-    /**
-     * Method to check if user is already logged
-     */
-    public boolean userAlreadyLogged(String username){
-        return online_users.containsKey(username);
-    }
+    public boolean checkIfUserOnline(String username){
+        ResultSet rs;
+        Connection db_connection = connectionPoolManager.getConnectionFromPool();
+        try {
+            preparedStatement = db_connection.prepareStatement("SELECT status FROM user where username = ?");
+            preparedStatement.setString(1, username);
+        } catch (SQLException e) {
+            System.out.println("Error preparing query");
+        }
 
+        try {
+            rs = preparedStatement.executeQuery();
+            if(rs.next()){
+                if(rs.getString("status").equals("online")){
+                    connectionPoolManager.returnConnectionToPool(db_connection);
+                    return true;
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Error executing query to select auction by code from database");
+        }
+        connectionPoolManager.returnConnectionToPool(db_connection);
+        return false;
+    }
 
     /**
      * Method to login a user
      */
     @Override
     public boolean login(String username, String password, String tcp_host_port) throws RemoteException {
-        if(!userAlreadyLogged(username)){
+        Connection db_connection = connectionPoolManager.getConnectionFromPool();
+
+        if(!checkIfUserOnline(username)){
             if(checkCredentials(username, password)){
-                addOnlineUser(username,tcp_host_port);
                 System.out.println("user logou e adicionei aos online users");
+                try {
+                    preparedStatement = db_connection.prepareStatement("UPDATE user SET status=? WHERE username = ?");
+                    preparedStatement.setString(1, "online");
+                    preparedStatement.setString(2, username);
+
+                    preparedStatement.executeUpdate();
+                    db_connection.commit();
+
+                } catch (SQLException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
+                System.out.println("user logou e adicionei aos online users");
+                connectionPoolManager.returnConnectionToPool(db_connection);
                 return true;
             }
         }
+        connectionPoolManager.returnConnectionToPool(db_connection);
         return false;
     }
 
@@ -212,12 +238,24 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     /**
      * Method to remove user from online_users
      */
+
+    /**
+     * Method to remove user from online_users
+     */
     private boolean removeOnlineUser(String username) throws RemoteException {
-        if (online_users.containsKey(username)){
-            online_users.remove(username);
-            saveOnlineUsers();
+        Connection db_connection = connectionPoolManager.getConnectionFromPool();
+        try {
+            preparedStatement = db_connection.prepareStatement("UPDATE user SET status='offline' WHERE username = ?");
+            preparedStatement.setString(1, username);
+            preparedStatement.executeUpdate();
+            db_connection.commit();
+            connectionPoolManager.returnConnectionToPool(db_connection);
             return true;
+        } catch (SQLException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
         }
+        connectionPoolManager.returnConnectionToPool(db_connection);
         return false;
     }
 
@@ -234,7 +272,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         Connection db_connection = connectionPoolManager.getConnectionFromPool();
 
         try {
-            preparedStatement = db_connection.prepareStatement("insert into auction (username, state, code, title, description, created_date, deadline, amount) values (?, ?, ?, ?, ?, ?, ?, ?)");
+            preparedStatement = db_connection.prepareStatement("INSERT INTO auction (username, state, code, title, description, created_date, deadline, amount) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
             preparedStatement.setString(1, owner);
             preparedStatement.setString(2, "active");
             preparedStatement.setString(3, code);
@@ -275,7 +313,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         Connection db_connection = connectionPoolManager.getConnectionFromPool();
 
         try {
-            preparedStatement = db_connection.prepareStatement("select * from auction a where a.code = ?");
+            preparedStatement = db_connection.prepareStatement("SELECT * FROM auction a WHERE a.code = ?");
             preparedStatement.setString(1, code);
         } catch (SQLException e) {
             System.out.println("Error preparing query");
@@ -303,7 +341,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
 
 
         try {
-            preparedStatement = db_connection.prepareStatement("select COUNT(*) total_messages, m.username username, m.text text from (SELECT m.username, m.text FROM message m WHERE m.auction_id = ?) aux, message m group by m.username, m.text");
+            preparedStatement = db_connection.prepareStatement("SELECT COUNT(*) total_messages, m.username username, m.text text FROM (SELECT m.username, m.text FROM message m WHERE m.auction_id = ?) aux, message m GROUP BY m.username, m.text");
             preparedStatement.setInt(1, id);
 
         } catch (SQLException e) {
@@ -327,7 +365,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
 
 
         try {
-            preparedStatement = db_connection.prepareStatement("select COUNT(*) total_bids, b.username username, b.amount amount from (SELECT b.username, b.amount FROM bid b WHERE b.auction_id = ?) aux, bid b group by b.username, b.amount");
+            preparedStatement = db_connection.prepareStatement("SELECT COUNT(*) total_bids, b.username username, b.amount amount FROM (SELECT b.username, b.amount FROM bid b WHERE b.auction_id = ?) aux, bid b GROUP BY b.username, b.amount");
             preparedStatement.setInt(1, id);
 
         } catch (SQLException e) {
@@ -405,7 +443,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         Connection db_connection = connectionPoolManager.getConnectionFromPool();
 
         try {
-            preparedStatement = db_connection.prepareStatement("select * from auction a where a.username = ?");
+            preparedStatement = db_connection.prepareStatement("SELECT * FROM auction a WHERE a.username = ?");
             preparedStatement.setString(1, username);
         } catch (SQLException e) {
             System.out.println("Error preparing query");
@@ -488,28 +526,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         Connection db_connection = connectionPoolManager.getConnectionFromPool();
 
         try {
-            ps = db_connection.prepareStatement("SELECT * FROM auction a WHERE a.id = ? AND a.username = ?");
-            ps.setInt(1, id);
-            ps.setString(2, username);
-
-            resultSet = ps.executeQuery();
-            resultSet.next();
-            title = resultSet.getString("title");
-            description = resultSet.getString("description");
-            deadline = resultSet.getTimestamp("deadline");
-        } catch (SQLException e) {
-            connectionPoolManager.returnConnectionToPool(db_connection);
-            return false;
-        }
-
-        try {
-            preparedStatement = db_connection.prepareStatement("INSERT INTO auction_history (auction_id, title, description, deadline, edited) values (?,?,?,?,?)");
+            preparedStatement = db_connection.prepareStatement("INSERT INTO auction_history (auction_id, title, description, deadline, edited) SELECT a.id, a.title, a.description, a.deadline, sysdate() FROM auction a WHERE a.id = ? AND a.username = ?");
             preparedStatement.setInt(1, id);
-            preparedStatement.setString(2, title);
-            preparedStatement.setString(3, description);
-            preparedStatement.setTimestamp(4, deadline);
-            java.sql.Timestamp edited = new java.sql.Timestamp(new java.util.Date().getTime());
-            preparedStatement.setTimestamp(5, edited);
+            preparedStatement.setString(2, username);
 
         } catch (SQLException e) {
             System.out.println("Error preparing query");
@@ -563,46 +582,6 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     }
 
     /**
-     * Method to check if user is online
-     */
-    private String checkIfUserOnline(String username){
-        if(online_users.containsKey(username)){
-            return online_users.get(username);
-        }
-        return "";
-    }
-
-    /**
-     * Method to get the TCP instance by host:port
-     */
-    private TCPServer getTCPbyHostPort(String tcp_host_port){
-        if (connected_TCPs.containsKey(tcp_host_port)){
-            return connected_TCPs.get(tcp_host_port);
-        }
-        return null;
-    }
-
-    /**
-     * Method to remove disconnected TCP and their users
-     */
-    private void removeTCPandUsers(String host_port){
-        System.out.println(online_users);
-        connected_TCPs.remove(host_port);
-        ArrayList<String> users_offline = new ArrayList<>();
-        for (Map.Entry<String, String> u: online_users.entrySet()){
-            if (u.getValue().equals(host_port)){
-                users_offline.add(u.getKey());
-            }
-        }
-        for (String u: users_offline) {
-            online_users.remove(u);
-        }
-        saveOnlineUsers();
-        System.out.println(online_users);
-    }
-
-
-    /**
      * Method to bid on a specific auction
      */
     @Override
@@ -622,7 +601,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
         int bid_id_after_insert;
 
         try {
-            ps = db_connection.prepareStatement("SELECT a.username owner, b.amount amount, b.username username, b.id bid_id FROM bid b, auction a WHERE b.bid_date = (SELECT MAX(bid_date) FROM bid WHERE auction_id = ?) AND a.id = b.auction_id AND a.state = 'active'");
+            ps = db_connection.prepareStatement("SELECT a.username owner, b.amount amount, b.username username, b.id bid_id FROM bid b, auction a WHERE b.bid_date = (SELECT MAX(bid_date) FROM bid WHERE auction_id = ?) AND a.id = b.auction_id AND a.state = 'active' FOR UPDATE");
             ps.setInt(1, auction_id);
 
             last_bid = ps.executeQuery();
@@ -650,11 +629,10 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
 
                     db_connection.commit();
 
-                    host_port = checkIfUserOnline(userWhoIsWinning);
-                    if(!host_port.isEmpty()){
+                    if(checkIfUserOnline(userWhoIsWinning)){
                         System.out.println("user que estava a ganhar está on");
                         System.out.println(userWhoIsWinning);
-                        TCPServer tcp = getTCPbyHostPort(host_port);
+                        TCPServer tcp = connected_TCPs.entrySet().iterator().next().getValue();
                         if(tcp != null){
                             System.out.println("antes de note");
                             String note = "type: notification_bid, id: " + auction_id + " user: " + bidder + " amount: " + amount;
@@ -664,9 +642,8 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
                         insertIntoBidNotification(userWhoIsWinning, bid_id_after_insert);
                     }
 
-                    host_port = checkIfUserOnline(auction_owner);
-                    if(!host_port.isEmpty()){
-                        TCPServer tcp = getTCPbyHostPort(host_port);
+                    if(checkIfUserOnline(auction_owner)){
+                        TCPServer tcp = connected_TCPs.entrySet().iterator().next().getValue();
                         if(tcp != null){
                             String note = "type: notification_bid, id: " + auction_id + " user: " + bidder + " amount: " + amount;
                             tcp.sendNotification(auction_owner, note);
@@ -705,9 +682,8 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
 
                     db_connection.commit();
 
-                    host_port = checkIfUserOnline(auction_owner);
-                    if(!host_port.isEmpty()){
-                        TCPServer tcp = getTCPbyHostPort(host_port);
+                    if(checkIfUserOnline(auction_owner)){
+                        TCPServer tcp = connected_TCPs.entrySet().iterator().next().getValue();
                         if(tcp != null){
                             String note = "type: notification_bid, id: " + auction_id + " user: " + bidder + " amount: " + amount;
                             tcp.sendNotification(auction_owner, note);
@@ -719,9 +695,13 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
                         connectionPoolManager.returnConnectionToPool(db_connection);
                         return true;
                     }
-
                 }
             }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        try {
+            db_connection.rollback();
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -754,7 +734,6 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
             System.out.println(text);
             response = ps.executeUpdate();
             System.out.println("depois do execute hu3");
-            db_connection.commit();
             ResultSet keys = ps.getGeneratedKeys();
             keys.next();
             id_message = keys.getInt(1);
@@ -771,10 +750,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
                 responseUsers = ps.executeQuery();
                 while(responseUsers.next()){
                     userToNotify = responseUsers.getString("userToNotify");
-                    host_port = checkIfUserOnline(userToNotify);
-                    if(!host_port.isEmpty()){
+                    if(checkIfUserOnline(userToNotify)){
                         System.out.println("user que estava a ganhar está on");
-                        TCPServer tcp = getTCPbyHostPort(host_port);
+                        TCPServer tcp = connected_TCPs.entrySet().iterator().next().getValue();
                         if(tcp != null){
                             System.out.println("antes de note");
                             String note = "type: notification_message, id: " + auction_id + ", user: " + userToNotify + ", text: " + text;
@@ -785,6 +763,7 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
                         insertIntoMessageNotification(userToNotify, id_message);
                     }
                 }
+                db_connection.commit();
                 connectionPoolManager.returnConnectionToPool(db_connection);
                 return true;
             }
@@ -836,10 +815,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
                 messager = response.getString("messager");
                 message_notification_id = response.getInt("message_notification_id");
                 note = "type: notification_message, id: " + auction_id + " user: " + messager + " text: " + text;
-                host_port = checkIfUserOnline(username);
-                if(!host_port.isEmpty()){
+                if(checkIfUserOnline(username)){
                     System.out.println("tenho host port");
-                    TCPServer tcp = getTCPbyHostPort(host_port);
+                    TCPServer tcp = connected_TCPs.entrySet().iterator().next().getValue();
                     try {
                         System.out.println("tcp.sendnotification");
                         tcp.sendNotification(username, note);
@@ -887,10 +865,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
                 bidder = response.getString("bidder");
                 bid_notification_id = response.getInt("bid_notification_id");
                 note = "type: notification_bid, id: " + auction_id + " user: " + bidder + " amount: " + amount;
-                host_port = checkIfUserOnline(username);
-                if(!host_port.isEmpty()){
+                if(checkIfUserOnline(username)){
                     System.out.println("tenho host port");
-                    TCPServer tcp = getTCPbyHostPort(host_port);
+                    TCPServer tcp = connected_TCPs.entrySet().iterator().next().getValue();
                     try {
                         System.out.println("tcp.sendnotification");
                         tcp.sendNotification(username, note);
@@ -950,12 +927,23 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     /**
      * Method to list all online users
      */
-    @Override
     public ArrayList<String> online_users() throws RemoteException {
 
+        PreparedStatement ps;
+        ResultSet rs;
+        Connection db_connection = connectionPoolManager.getConnectionFromPool();
+
         ArrayList<String> users_online = new ArrayList<>();
-        for (Map.Entry<String,String> online_user:online_users.entrySet()){
-            users_online.add(online_user.getKey());
+
+        try {
+            ps = db_connection.prepareStatement("SELECT username FROM user WHERE status = 'online'");
+            rs = ps.executeQuery();
+
+            while(rs.next()){
+                users_online.add(rs.getString("username"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
         return users_online;
     }
@@ -989,10 +977,9 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
                 auction_id = response.getInt("auction_id");
                 userToNotify = response.getString("username");
                 notification = "type: notification_auction_won, text: You have won the auction with the following id: " + auction_id;
-                host_port = checkIfUserOnline(userToNotify);
-                if(!host_port.isEmpty()){
+                if(checkIfUserOnline(userToNotify)){
                     System.out.println("user que ganhou está on");
-                    TCPServer tcp = getTCPbyHostPort(host_port);
+                    TCPServer tcp = connected_TCPs.entrySet().iterator().next().getValue();
                     if(tcp != null){
                         System.out.println("antes de note");
                         try {
@@ -1111,9 +1098,6 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
                 }
 
                 // REMOVER BIDS
-
-                // encontrar a primeira dele
-                // TODO: ESTE SELECT TÁ FODIDO
                 ps = db_connection.prepareStatement("SELECT b.auction_id auction_id, b.amount amount, b.bid_date bid_date FROM bid b WHERE (b.bid_date, b.auction_id) IN (SELECT MIN(bid_date), b.auction_id FROM bid WHERE username = ? GROUP BY auction_id) AND username = ?");
                 ps.setString(1, username);
                 ps.setString(2, username);
@@ -1300,91 +1284,6 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
 
 
     /**
-     * Method to check RMI connection and at the same time transfer data between RMI's
-     */
-    @Override
-    public DataTransfer ping() throws RemoteException {
-        String filename = "id.txt";
-        TextFile previous_id = new TextFile();
-        int auc_prev_id=0;
-        try {
-            previous_id.openRead(filename);
-            auc_prev_id=Integer.valueOf(previous_id.readLine());
-            previous_id.closeRead();
-        } catch (IOException e) {
-            try {
-                //file doesnt exist -> create new file
-                previous_id.openWriteOW(filename);
-                previous_id.writeLine("0");
-                previous_id.closeWrite();
-            } catch (IOException e1) {
-                System.out.println("Problem with read/create id file.");
-            }
-        }
-        return new DataTransfer(auctions,users,online_users,notifications,auc_prev_id);
-    }
-
-
-    /**
-     * Method to save online_users to a file
-     */
-    public void saveOnlineUsers(){
-        ObjectFile file = new ObjectFile();
-        try {
-            file.openWrite("online_users");
-            try {
-                file.writeObject(this.online_users);
-            } catch (IOException e) {
-                System.out.println("Problem saving online_users");
-            }
-            try {
-                file.closeWrite();
-            } catch (IOException e) {
-                System.out.println("Problem closing online_users file(WRITE MODE).");
-            }
-        } catch (IOException e) {
-            System.out.println("Problem opening online_users file(WRITE MODE)");
-        }
-
-    }
-
-
-    /**
-     * Method to load online_users from a file
-     */
-    public void loadOnlineUsers(){
-        ObjectFile file = new ObjectFile();
-        try {
-            file.openRead("online_users");
-
-            try {
-                this.online_users = (Map<String,String>) file.readObject();
-            } catch (IOException | ClassNotFoundException e) {
-                System.out.println("Problem loading online_users");
-            }
-
-            try {
-                file.closeRead();
-            } catch (IOException e) {
-                System.out.println("Problem closing users online_file(READ MODE)");
-            }
-        } catch (IOException e) {
-            System.out.println("Problem opening online_users file(READ MODE)(No online_users found)");
-        }
-    }
-
-    /**
-     * Method to save all data received from primary RMI via ping() method
-     */
-    public void saveDataFromPrimaryRMI(DataTransfer data){
-        this.auctions = data.getAuctions();
-        this.users = data.getUsers();
-        this.online_users = data.getOnline_users();
-        this.notifications = data.getNotifications();
-        saveOnlineUsers();
-    }
-
-    /**
      * Method that initializes RMI and starts a Thread that calls end_auctions() with a minute interval
      */
     static void rmiStart(int port){
@@ -1416,55 +1315,17 @@ public class RMIServerImpl extends java.rmi.server.UnicastRemoteObject  implemen
     }
 
     /**
-     * Method that checks if primary RMI is up, and if not calls rmiStart()
-     */
-    static void testRMI(RMIServer RMI, int port){
-        try {
-            DataTransfer dataFromOtherRMI = RMI.ping();
-            new RMIServerImpl().saveDataFromPrimaryRMI(dataFromOtherRMI);
-            String filename = "id.txt";
-            TextFile previous_id = new TextFile();
-            try {
-                previous_id.openWriteOW(filename);
-                previous_id.writeLine(String.valueOf(dataFromOtherRMI.getLast_auc_id()));
-                previous_id.closeWrite();
-            } catch (java.io.IOException e) {
-                System.out.println("Problem with save id file.");
-            }
-            System.out.println("Data saved with success.");
-            try {
-                Thread.sleep(1000);
-                testRMI(RMI, port);
-            } catch (InterruptedException e) {
-                System.out.println("Problem with testRMI sleep");
-            }
-
-        } catch (RemoteException e) {
-            rmiStart(port);
-        }
-
-    }
-
-    /**
      * Method to init RMIServer
      */
     public static void main(String args[]){
 
         connectionPoolManager = new ConnectionPoolManager();
 
-        String host_aux_rmi = "localhost";
-        int port_aux_rmi=7000, port=7000;
+        int port=7000;
         if (args.length==3) {
-            host_aux_rmi = args[0];
-            port_aux_rmi = Integer.parseInt(args[1]);
             port = Integer.parseInt(args[2]);
         }
-        try {
-            RMIServer RMI = (RMIServer) LocateRegistry.getRegistry(host_aux_rmi,port_aux_rmi).lookup("iBei");
-            testRMI(RMI, port);
-        } catch (RemoteException | NotBoundException e) {
-            rmiStart(port);
-        }
+        rmiStart(port);
     }
 }
 
@@ -1473,7 +1334,7 @@ class ConnectionPoolManager{
 
     String databaseUrl = "jdbc:mysql://localhost:3306/ibei";
     String userName = "root";
-    String password = "coimbra";
+    String password = "ibei";
 
     Vector connectionPool = new Vector();
 

@@ -95,7 +95,6 @@ public class TCPServerImpl extends java.rmi.server.UnicastRemoteObject implement
 
         System.setProperty("java.net.preferIPv4Stack", "true");
 
-        UDPSender udp;
         try {
             TCPServerImpl tcp = new TCPServerImpl(tcp_host, tcp_port, primary_rmi_host, backup_rmi_host, p_rmi_port, b_rmi_port);
             if (!tcp.rmiConnection(primary_rmi_host, backup_rmi_host, p_rmi_port, b_rmi_port, 6)) {
@@ -108,9 +107,6 @@ public class TCPServerImpl extends java.rmi.server.UnicastRemoteObject implement
                 ServerSocket listenSocket = new ServerSocket(tcp_port);
                 System.out.println("LISTEN SOCKET=" + listenSocket);
                 tcp.notes = new Notification();
-                udp = new UDPSender(tcp);
-                udp.udpMessager();
-
                 // MULTICAST - RECEBER MENSAGENS UDP
                 new Thread() {
                     public void run() {

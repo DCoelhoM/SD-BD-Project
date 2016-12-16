@@ -5,12 +5,11 @@ drop table if exists auction_history;
 create table auction_history
 (
   auction_id           mediumint not null AUTO_INCREMENT,
-  version              numeric not null,
   title                char(32),
   description          char(128),
   deadline             datetime,
   edited               datetime,
-  primary key (auction_id, version)
+  primary key (auction_id, edited)
 );
 
 /*==============================================================*/
@@ -92,6 +91,7 @@ create table user
   username             char(16) not null,
   password             char(32) not null,
   state                char(8) not null,
+  status               char(16) DEFAULT 'offline',
   primary key (username)
 );
 
@@ -124,3 +124,5 @@ references message (id) on delete restrict;
 
 alter table message_notification add constraint FK_relationship_10 foreign key (username)
 references user (username) on delete restrict;
+
+
